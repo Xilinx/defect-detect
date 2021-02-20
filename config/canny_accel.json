@@ -1,0 +1,16 @@
+{
+  "xclbin-location": "/usr/lib/krnl_threshold.xclbin",
+  "ivas-library-repo": "/usr/lib/ivas",
+  "element-mode": "transform",
+  "kernels": [
+    {
+      "kernel-name": "canny_accel:canny_accel_1",
+      "library-name": "libivas_canny_edge.so",
+      "config": {
+        "debug_level" : 4,
+        "min_thr": 40,
+        "max_thr": 255
+      }
+    }
+  ]
+}

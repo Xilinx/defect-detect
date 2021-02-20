@@ -1,0 +1,39 @@
+/******************************************************************************
+* Copyright (C) 2010 - 2020 Xilinx, Inc. All rights reserved.
+* SPDX-License-Identifier: Apache-2.0
+******************************************************************************/
+
+
+1. Development Guide:
+   If you want to build from source, follow next steps, otherwise skip this section.
+
+   1) Install the SoM sdk.sh to the path you choose or default. Suppose SDKPATH.
+   2) Run "./build.sh ${SDKPATH}" to build the somapp application.
+   3) The build process in 2) will produce a rpm package SoMApp-1.0.1-1.aarch64.rpm under build/, upload to the board,
+      and run "rmp -ivh --force ./AIbox_aa4-1.0.1-1.aarch64.rpm" to update install.
+
+2. File structure:
+    The application is installed as:
+        Binary File: => /opt/xilinx/bin
+                                        aibox_aa4                               main app
+
+        configuration File: => /opt/xilinx/share/aibox_aa4
+                                        crop.json
+                                        draw_reid.json
+                                        ped_pp.json
+                                        refinedet.json
+                                        reid.json
+
+3. How to run application:
+    0) Prerequisites:
+       a) Monitor:
+          Before booting the board, please connect the monitor to the board via either DP or HDMI port.
+
+    1) Run AA4 application:
+       aibox_aa can accept one or multi groups of options of --src, --srctype, --srcenc and --pos, to specify the src locatoin, src type (file/rtsp), src encoding type (h264/h265)
+       and the displayed position in the 4 grids of the 4k monitor.
+
+       aibox_aa4 -t rtsp -s rtsp://192.168.33.123:5000/test                               -p 0  \
+                 -t file -s /usr/share/somapp/movies/walking-people.nv12.30fps.1080p.h264 -p 3
+
+4. Command Option:

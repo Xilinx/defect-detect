@@ -1,0 +1,14 @@
+{
+  "xclbin-location": "/usr/lib/krnl_threshold.xclbin",
+  "ivas-library-repo": "/usr/lib/ivas",
+  "element-mode": "transform",
+  "kernels": [
+    {
+      "kernel-name": "edgetracing_accel:edgetracing_accel_1",
+      "library-name": "libivas_edge_tracer.so",
+      "config": {
+        "debug_level" : 4
+      }
+    }
+  ]
+}
