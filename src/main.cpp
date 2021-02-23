@@ -7,13 +7,13 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
+ i/
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -66,8 +66,6 @@ GMainLoop *loop;
 
 void set_pipeline_config (AppData *data, gboolean fileplayback);
 
-void cb_message (GstBus *bus, GstMessage *msg, AppData *data);
-
 const gchar * error_to_string (DD_ERROR_LOG error_code);
 
 DD_ERROR_LOG create_pipeline (AppData *data, gboolean fileplayback);
@@ -79,36 +77,68 @@ signal_handler (gint sig) {
      signal(sig, SIG_IGN);
      g_print ("Hit Ctrl-C, Quitting the app now\n");
      if (loop && g_main_is_running (loop)) {
-         g_print ("Quitting the loop \n");
-         g_main_loop_quit (loop);
+        g_print ("Quitting the loop \n");
+        g_main_loop_quit (loop);
+        g_object_unref(loop);
      }
      return;
 }
 
-void
-cb_message (GstBus *bus, GstMessage *msg, AppData *data) {
-  //printf("Msgs %s\n",gst_message_type_get_name (GST_MESSAGE_TYPE (msg)));
-  switch (GST_MESSAGE_TYPE (msg)) {
-    case GST_MESSAGE_ERROR: {
-      GError *err;
-      gchar *debug;
-
-      gst_message_parse_error (msg, &err, &debug);
-      g_print ("Error: %s\n", err->message);
-      g_error_free (err);
-      g_free (debug);
-      g_main_loop_quit (loop);
-      break;
+#if 0
+static gboolean bus_call(GstBus *bus, GstMessage *msg, void *user_data)
+{
+    switch (GST_MESSAGE_TYPE(msg)) {
+    case GST_MESSAGE_EOS: {
+        g_print("End-of-stream");
+        g_main_loop_quit(loop);
+        break;
     }
+    case GST_MESSAGE_ERROR: {
+        GError *err;
+        gst_message_parse_error(msg, &err, NULL);
+        g_print("%s", err->message);
+        g_error_free(err);
+
+        g_main_loop_quit(loop);
+        break;
+    }
+    default:
+        break;
+    }
+}
+#endif
+
+static gboolean
+cb_message (GstBus *bus, GstMessage *msg, AppData *data) {
+    GError *err;
+    gchar *debug;
+    g_print("Coming to the bus callback\n");
+    switch (GST_MESSAGE_TYPE (msg)) {
+    case GST_MESSAGE_ERROR: 
+        gst_message_parse_error (msg, &err, &debug);
+        g_print ("Error: %s\n", err->message);
+        g_error_free (err);
+        g_free (debug);
+        if (loop && g_main_is_running (loop)) {
+            g_print ("Quitting the loop \n");
+            g_main_loop_quit (loop);
+            g_object_unref(loop);
+        }
+    break;
     case GST_MESSAGE_EOS:
-      /* end-of-stream */
-      g_print ("End Of Stream\n");
-      g_main_loop_quit (loop);
-      break;
+        /* end-of-stream */
+        g_print ("End Of Stream\n");
+        if (loop && g_main_is_running (loop)) {
+            g_print ("Quitting the loop \n");
+            g_main_loop_quit (loop);
+            g_object_unref(loop);
+        }
+    break;
     default:
       /* Unhandled message */
       break;
     }
+    return TRUE;
 }
 
 const gchar *
@@ -157,6 +187,7 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
     g_object_set (G_OBJECT(data->prepros), "kernels-config", "pre_pros.json", NULL);
     g_object_set (G_OBJECT(data->text),    "kernels-config", "text2overlay.json", NULL);
     if (!fileplayback) {
+        printf ("saket should not come for file playback\n");
         g_object_set (G_OBJECT(data->src),     "io-mode", V4L2_IO_MODE_DMABUF_EXPORT, NULL);
         g_object_set (G_OBJECT(data->canny),   "kernels-config", "canny.json", NULL);
         g_object_set (G_OBJECT(data->blob),    "kernels-config", "blob.json", NULL);
@@ -172,6 +203,7 @@ link_pipeline (AppData *data, gboolean fileplayback) {
             return DD_ERROR_PIPELINE_LINKING_FAIL;
         } else {
             GST_DEBUG ("Linked for src --> capsfilter --> prepros --> text2overlay --> sink successfully");
+            return DD_SUCCESS;
         }
     } else {
         if (!gst_element_link_many(data->src, data->capsfilter, data->prepros, data->canny, data->blob, \
@@ -180,6 +212,7 @@ link_pipeline (AppData *data, gboolean fileplayback) {
             return DD_ERROR_PIPELINE_LINKING_FAIL;
         } else {
             GST_DEBUG ("Linked for src --> capsfilter --> prepros --> canny --> blob --> contour --> text2overlay --> sink successfully");
+            return DD_SUCCESS;
         }
     }
 }
@@ -192,13 +225,13 @@ create_pipeline (AppData *data, gboolean fileplayback) {
         g_print ("It's a file playback\n");
     } else {
         data->src =   gst_element_factory_make("v4l2src", "source");
+        data->canny      =  gst_element_factory_make("ivas_xfilter", "canny-edge");
+        data->blob       =  gst_element_factory_make("ivas_xfilter", "blob-detector");
+        data->contour    =  gst_element_factory_make("ivas_xfilter", "contour-filling");
         g_print ("It's a live playback\n");
     }
     data->capsfilter =  gst_element_factory_make("capsfilter",   "capsfilter");
     data->prepros    =  gst_element_factory_make("ivas_xfilter", "pre-processing");
-    data->canny      =  gst_element_factory_make("ivas_xfilter", "canny-edge");
-    data->blob       =  gst_element_factory_make("ivas_xfilter", "blob-detector");
-    data->contour    =  gst_element_factory_make("ivas_xfilter", "contour-filling");
     data->text       =  gst_element_factory_make("ivas_xfilter", "text2overlay");
     data->sink       =  gst_element_factory_make("filesink",      "display");
 
@@ -209,8 +242,13 @@ create_pipeline (AppData *data, gboolean fileplayback) {
     } else {
         g_print("All elemnets are created ............\n");
     }
-    gst_bin_add_many(GST_BIN(data->pipeline), data->src, data->capsfilter, data->prepros, \
-                     data->canny, data->blob, data->contour, data->text, data->sink, NULL);
+    if (fileplayback) {
+        gst_bin_add_many(GST_BIN(data->pipeline), data->src, data->capsfilter, data->prepros, \
+                         data->text, data->sink, NULL);
+    } else {
+        gst_bin_add_many(GST_BIN(data->pipeline), data->src, data->capsfilter, data->prepros, \
+                         data->canny, data->blob, data->contour, data->text, data->sink, NULL);
+    }
     return DD_SUCCESS;
 }
 
@@ -235,16 +273,19 @@ main (int argc, char **argv) {
     if (!strcmp (argv[2], "-w")) {
         data.width = atoi (argv[3]);  
     } else {
+        printf ("saket width option mismatch \n");
         return -1;
     }
     if  (!strcmp (argv[4], "-h")) {
         data.height = atoi (argv[5]);
     } else {
+        printf ("saket height option mismatch \n");
         return -1;
     }
     if  (!strcmp (argv[6], "-fr")) {
         data.fr = atoi (argv[7]);
     } else {
+        printf ("saket height option mismatch \n");
         return -1;
     }
     if (fileplayback) { 
@@ -281,12 +322,12 @@ main (int argc, char **argv) {
         goto CLOSE;
     }
  
+    g_print("waiting for the loop\n");
     loop = g_main_loop_new (NULL, FALSE);
     g_main_loop_run (loop);
 CLOSE:
     gst_element_set_state(data.pipeline, GST_STATE_NULL);
     gst_object_unref(G_OBJECT(data.pipeline));
-    g_object_unref(loop);
     g_free (data.in_file);
     g_free (data.out_file);
     return DD_SUCCESS;
