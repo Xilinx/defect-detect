@@ -43,18 +43,12 @@ target_link_libraries(ivas_canny_edge
   jansson ivasutil gstivasinfermeta-1.0)
 install(TARGETS ivas_canny_edge DESTINATION ${INSTALL_PATH}/lib)
 
-add_library(ivas_defectdetection SHARED src/ivas_defectdetection.c)
-target_include_directories(ivas_defectdetection PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(ivas_defectdetection
-  jansson ivasutil gstivasinfermeta-1.0)
-install(TARGETS ivas_defectdetection DESTINATION ${INSTALL_PATH}/lib)
-
-add_library(ivas_text2overlay SHARED src/ivas_text2overlay.cpp src/ivas_text2overlay.hpp)
-target_include_directories(ivas_text2overlay PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(ivas_text2overlay
+add_library(ivas_defectcalc SHARED src/ivas_defectcalc.cpp src/ivas_defectcalc.hpp)
+target_include_directories(ivas_defectcalc PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_link_libraries(ivas_defectcalc
   gstreamer-1.0 gstbase-1.0 gobject-2.0 glib-2.0 gstvideo-1.0 gstallocators-1.0
   gstivasmeta-1.0 jansson ivasutil ${OpenCV_LIBS} gstivasinfermeta-1.0 glog)
-install(TARGETS ivas_text2overlay DESTINATION ${INSTALL_PATH}/lib)
+install(TARGETS ivas_defectcalc DESTINATION ${INSTALL_PATH}/lib)
 
 add_library(ivas_preprocess SHARED src/ivas_preprocess.c)
 target_include_directories(ivas_preprocess PRIVATE ${GSTREAMER_INCLUDE_DIRS})
@@ -79,11 +73,10 @@ install(PROGRAMS
     DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES
-    config/canny_accel.json
-    config/defectdetection.json
-    config/edge_tracer.json
-    config/pre_pros.json
-    config/text2overlay.json
+    config/canny-accelarator.json
+    config/defect-calculation.json
+    config/edge-tracer.json
+    config/pre-process.json
     DESTINATION ${INSTALL_PATH}/share/aibox_aa4)
 
 

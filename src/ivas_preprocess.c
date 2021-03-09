@@ -85,19 +85,11 @@ int32_t xlnx_kernel_init(IVASKernel *handle)
 
 int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NUM_OBJECT], IVASFrame *output[MAX_NUM_OBJECT])
 {
-    int uv_h, uv_w;
     PreProcessingKernelPriv *kernel_priv;
-    GstInferenceMeta *infer_meta = NULL;
-    IVASFrame *outframe = output[0];
-    char *pstr;                   /* prediction string */
     int ret;
+
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
 
-    uv_h = (input[0]->props.height);
-    uv_w = (input[0]->props.width);
-    printf ("saket uv_h: %d and uv_w: %d\n", uv_h, uv_w);
-    printf ("saket threashold: %d and maxval: %d\n", kernel_priv->threshold, kernel_priv->max_value);
-    printf ("saket start: %d\n", start);
     ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x10);       /* Input buffer */
     ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x38);   /* In Y8 rows */
     ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t), 0x40);    /* In Y8 columns */
@@ -107,51 +99,16 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
 
     ret = ivas_kernel_start (handle);
     if (ret < 0) {
-        printf("ERROR: IVAS MS: failed to issue execute command");
+        LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to issue execute command");
         return 0;
     }
 
     /* wait for kernel completion */
     ret = ivas_kernel_done (handle, 1000);
     if (ret < 0) {
-        printf("ERROR: IVAS MS: failed to receive response from kernel");
+        LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to receive response from kernel");
         return 0;
     }
-
-    infer_meta = (GstInferenceMeta *) gst_buffer_add_meta ((GstBuffer *)
-        outframe->app_priv, gst_inference_meta_get_info (), NULL);
-    if (infer_meta == NULL) {
-      LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level,
-          "ivas meta data is not available for dpu");
-      return -1;
-    }
-    if (NULL == infer_meta->prediction) {
-      printf ("saket allocating prediction \n");
-      infer_meta->prediction = gst_inference_prediction_new ();
-    } else {
-      printf ("saket already allocated prediction \n");
-    }
-
-    GstInferencePrediction *predict;
-    GstInferenceClassification *c = NULL;
-    GstInferenceClassification *a = NULL;
-    GstInferenceClassification *b = NULL;
-    predict = gst_inference_prediction_new ();
-
-    c = gst_inference_classification_new_full (-1, 0.0,
-        "DEFECTED", 0, NULL, NULL, NULL);
-    a = gst_inference_classification_new_full (-1, 0.0,
-        "ACCURACY", 0, NULL, NULL, NULL);
-    b = gst_inference_classification_new_full (-1, 0.0,
-        "RATE", 0, NULL, NULL, NULL);
-    gst_inference_prediction_append_classification (predict, c);
-    gst_inference_prediction_append_classification (predict, a);
-    gst_inference_prediction_append_classification (predict, b);
-
-    gst_inference_prediction_append (infer_meta->prediction, predict);
-
-    pstr = gst_inference_prediction_to_string (infer_meta->prediction);
-    free(pstr);
     return TRUE;
 }
 

@@ -85,16 +85,10 @@ int32_t xlnx_kernel_init(IVASKernel *handle)
 
 int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NUM_OBJECT], IVASFrame *output[MAX_NUM_OBJECT])
 {
-    int uv_h, uv_w;
     PreProcessingKernelPriv *kernel_priv;
     int ret;
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
 
-    uv_h = (input[0]->props.height);
-    uv_w = (input[0]->props.width);
-    printf ("saket uv_h: %d and uv_w: %d\n", uv_h, uv_w);
-    printf ("saket min thr: %d and max thr: %d\n", kernel_priv->min_thr, kernel_priv->max_thr);
-    printf ("saket start: %d\n", start);
     ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x10);       /* Input buffer */
     ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x28);   /* In Y8 rows */
     ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t), 0x30);    /* In Y8 columns */
@@ -104,14 +98,14 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
 
     ret = ivas_kernel_start (handle);
     if (ret < 0) {
-        printf("ERROR: IVAS MS: failed to issue execute command");
+         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to issue execute command");
         return 0;
     }
 
     /* wait for kernel completion */
     ret = ivas_kernel_done (handle, 1000);
     if (ret < 0) {
-        printf("ERROR: IVAS MS: failed to receive response from kernel");
+        LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to receive response from kernel");
         return 0;
     }
 

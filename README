@@ -18,11 +18,10 @@
                                         aibox_aa4                               main app
 
         configuration File: => /opt/xilinx/share/aibox_aa4
-                                        crop.json
-                                        draw_reid.json
-                                        ped_pp.json
-                                        refinedet.json
-                                        reid.json
+                                        canny-accelarator.json
+                                        defect-calculation.json
+                                        edge-tracer.json
+                                        pre-process.json
 
 3. How to run application:
     0) Prerequisites:

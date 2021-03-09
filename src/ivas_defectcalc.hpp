@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __IVAS_TEXT2OVERLAY_H__
-#define __IVAS_TEXT2OVERLAY_H__
+#ifndef __IVAS_DEFECTCALC_H__
+#define __IVAS_DEFECTCALC_H__
 
 enum
 {
@@ -45,4 +45,4 @@ enum
   } while (0); \
 }
 
-#endif /* __IVAS_TEXT2OVERLAY_H__  */
+#endif /* __IVAS_DEFECTCALC_H__  */
