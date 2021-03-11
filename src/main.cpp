@@ -26,6 +26,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <gst/video/videooverlay.h>
+#include <string>
+
+using namespace std;
 
 GST_DEBUG_CATEGORY (defectdetection_app);
 #define GST_CAT_DEFAULT defectdetection_app
@@ -40,7 +43,6 @@ GST_DEBUG_CATEGORY (defectdetection_app);
 #define CAPTURE_FORMAT_Y8            "GRAY8"
 #define MAX_WIDTH                    1280
 #define MAX_HEIGHT                   800
-#define MAX_SUPPORTED_FRAME_RATE     60
 #define MAX_FRAME_RATE_DENOM         1
 #define BASE_PLANE_ID                34
 
@@ -62,13 +64,30 @@ typedef struct _AppData {
     GstElement *queue_raw, *queue_raw2, *queue_edge, *queue_edge2;
     GstElement *perf_raw, *perf_edge, *perf_display;
     GstElement *preprocess, *canny, *edge_tracer, *defect_calculator;
-    guint width, height, framerate;
-    gchar *in_file, *out_file;
     GstPad *pad_raw, *pad_raw2, *pad_edge, *pad_edge2;
     GstVideoOverlay  *overlay_raw, *overlay_edge, *overlay_display;
 } AppData;
 
 GMainLoop *loop;
+gboolean fileplayback = FALSE;
+static gchar* in_file = NULL;
+static gchar* config_path = "/opt/xilinx/share/defectdetection_aa4/";
+static gchar* out_file = NULL;
+guint width = 1280;
+guint height = 800;
+guint framerate = 60;
+
+static GOptionEntry entries[] =
+{
+    { "infile",    'i', 0, G_OPTION_ARG_FILENAME, &in_file, "location of GRAY8 file as input", "file path"},
+    { "outfile",   'o', 0, G_OPTION_ARG_FILENAME, &out_file, "location of GRAY8 file as output", "file path"},
+    { "width",     'w', 0, G_OPTION_ARG_INT, &width, "resolution width of the input", "1280"},
+    { "height",    'h', 0, G_OPTION_ARG_INT, &height, "resolution height of the input", "800"},
+    { "framerate", 'r', 0, G_OPTION_ARG_INT, &framerate, "framerate of the input source", "60"},
+    { "intype",    'f', 0, G_OPTION_ARG_INT, &fileplayback, "For live playback value must be 0 otherwise 1", NULL},
+    { "cfgpath",   'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON file path", "config path"},
+    { NULL }
+};
 
 /* Handler for the pad-added signal */
 static void pad_added_cb (GstElement *src, GstPad *pad, AppData *data);
@@ -122,9 +141,9 @@ cb_message (GstBus *bus, GstMessage *msg, AppData *data) {
     break;
     case GST_MESSAGE_EOS:
         /* end-of-stream */
-        g_print ("End Of Stream\n");
+        GST_DEBUG ("End Of Stream");
         if (loop && g_main_is_running (loop)) {
-            g_print ("Quitting the loop \n");
+            GST_DEBUG ("Quitting the loop");
             g_main_loop_quit (loop);
         }
     break;
@@ -188,14 +207,14 @@ DD_ERROR_LOG
 set_pipeline_config (AppData *data, gboolean fileplayback) {
     gint block_size;
     GstCaps *srcCaps;
-    gchar *config_file;
+    string config_file(config_path);
     gint ret = DD_SUCCESS;
     guint plane_id = BASE_PLANE_ID;
     if (fileplayback) {
-        block_size = data->width * data->height;
-        g_object_set(G_OBJECT(data->src),          "location",  data->in_file,  NULL);
+        block_size = width * height;
+        g_object_set(G_OBJECT(data->src),          "location",  in_file,  NULL);
         g_object_set(G_OBJECT(data->src),          "blocksize", block_size,     NULL);
-        g_object_set(G_OBJECT(data->sink_display), "location",  data->out_file, NULL);
+        g_object_set(G_OBJECT(data->sink_display), "location",  out_file, NULL);
     } else {
         g_object_set(G_OBJECT(data->src),          "media-device", MEDIA_DEVICE_NODE, NULL);
 
@@ -212,7 +231,7 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
 
         data->overlay_raw = GST_VIDEO_OVERLAY (data->sink_raw);
         if (data->overlay_raw) {
-          ret = gst_video_overlay_set_render_rectangle (data->overlay_raw, 0, 0, data->width, data->height);
+          ret = gst_video_overlay_set_render_rectangle (data->overlay_raw, 0, 0, width, height);
           if (ret) {
             gst_video_overlay_expose (data->overlay_raw);
             ret = DD_SUCCESS;
@@ -224,7 +243,7 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
 
         data->overlay_edge = GST_VIDEO_OVERLAY (data->sink_edge);
         if (data->overlay_edge) {
-          ret = gst_video_overlay_set_render_rectangle (data->overlay_edge, 2560, 0, data->width, data->height);
+          ret = gst_video_overlay_set_render_rectangle (data->overlay_edge, 2560, 0, width, height);
           if (ret) {
             gst_video_overlay_expose (data->overlay_edge);
             ret = DD_SUCCESS;
@@ -236,7 +255,7 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
 
         data->overlay_display = GST_VIDEO_OVERLAY (data->sink_display);
         if (data->overlay_display) {
-          ret = gst_video_overlay_set_render_rectangle (data->overlay_display, 1280, 800, data->width, data->height);
+          ret = gst_video_overlay_set_render_rectangle (data->overlay_display, 1280, 800, width, height);
           if (ret) {
             gst_video_overlay_expose (data->overlay_display);
             ret = DD_SUCCESS;
@@ -247,42 +266,33 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
         }
     }
     srcCaps  = gst_caps_new_simple ("video/x-raw",
-                                    "width",     G_TYPE_INT,        data->width,
-                                    "height",    G_TYPE_INT,        data->height,
+                                    "width",     G_TYPE_INT,        width,
+                                    "height",    G_TYPE_INT,        height,
                                     "format",    G_TYPE_STRING,     CAPTURE_FORMAT_Y8,
-                                    "framerate", GST_TYPE_FRACTION, data->framerate, MAX_FRAME_RATE_DENOM,
+                                    "framerate", GST_TYPE_FRACTION, framerate, MAX_FRAME_RATE_DENOM,
                                     NULL);
     GST_DEBUG ("new Caps for src capsfilter %" GST_PTR_FORMAT, srcCaps);
     g_object_set (G_OBJECT (data->capsfilter),  "caps",  srcCaps, NULL);
     gst_caps_unref (srcCaps);
 
-    //config_file = g_strdup(CONFIG_FILE_PATH);
-    //strcpy (config_file+strlen(CONFIG_FILE_PATH), PRE_PROCESS_JSON_FILE);
-    config_file = g_strdup(PRE_PROCESS_JSON_FILE);
-    g_object_set (G_OBJECT(data->preprocess), "kernels-config", config_file, NULL);
-    GST_DEBUG ("config file path is %s", config_file);
-    g_free (config_file); config_file = NULL;
+    config_file.append(PRE_PROCESS_JSON_FILE);
+    g_object_set (G_OBJECT(data->preprocess), "kernels-config", config_file.c_str(), NULL);
+    GST_DEBUG ("Config file path is %s", config_file.c_str());
 
-    //config_file = g_strdup(CONFIG_FILE_PATH);
-    //strcpy (config_file+strlen(CONFIG_FILE_PATH), CANNY_ACC_JSON_FILE);
-    config_file = g_strdup(CANNY_ACC_JSON_FILE);
-    g_object_set (G_OBJECT(data->canny),   "kernels-config", config_file, NULL);
-    GST_DEBUG ("config file path is %s", config_file);
-    g_free (config_file); config_file = NULL;
+    config_file.erase (config_file.begin()+ strlen(config_path), config_file.end()-0);
+    config_file.append(CANNY_ACC_JSON_FILE);
+    g_object_set (G_OBJECT(data->canny),   "kernels-config", config_file.c_str(), NULL);
+    GST_DEBUG ("Config file path is %s", config_file.c_str());
 
-    //config_file = g_strdup(CONFIG_FILE_PATH);
-    //strcpy (config_file+strlen(CONFIG_FILE_PATH), EDGE_TRACER_JSON_FILE);
-    config_file = g_strdup(EDGE_TRACER_JSON_FILE);
-    g_object_set (G_OBJECT(data->edge_tracer),    "kernels-config", config_file, NULL);
-    GST_DEBUG ("config file path is %s", config_file);
-    g_free (config_file); config_file = NULL;
+    config_file.erase (config_file.begin()+ strlen(config_path), config_file.end()-0);
+    config_file.append(EDGE_TRACER_JSON_FILE);
+    g_object_set (G_OBJECT(data->edge_tracer),    "kernels-config", config_file.c_str(), NULL);
+    GST_DEBUG ("Config file path is %s", config_file.c_str());
 
-    //config_file = g_strdup(CONFIG_FILE_PATH);
-    //strcpy (config_file+strlen(CONFIG_FILE_PATH), DEFECT_CALC_JSON_FILE);
-    config_file = g_strdup(DEFECT_CALC_JSON_FILE);
-    g_object_set (G_OBJECT(data->defect_calculator), "kernels-config", config_file, NULL);
-    GST_DEBUG ("config file path is %s", config_file);
-    g_free (config_file); config_file = NULL;
+    config_file.erase (config_file.begin()+ strlen(config_path), config_file.end()-0);
+    config_file.append(DEFECT_CALC_JSON_FILE);
+    g_object_set (G_OBJECT(data->defect_calculator), "kernels-config", config_file.c_str(), NULL);
+    GST_DEBUG ("Config file path is %s", config_file.c_str());
     return ret;
 }
 
@@ -384,7 +394,7 @@ DD_ERROR_LOG
 create_pipeline (AppData *data, gboolean fileplayback) {
     data->pipeline =   gst_pipeline_new("defectdetection");
     if (fileplayback) {
-        g_print ("It's a file playback\n");
+        GST_DEBUG ("It's a file playback");
         data->src               =  gst_element_factory_make("filesrc",      NULL);
         data->capsfilter        =  gst_element_factory_make("capsfilter",   NULL);
         data->preprocess        =  gst_element_factory_make("ivas_xfilter", "pre-process");
@@ -397,7 +407,7 @@ create_pipeline (AppData *data, gboolean fileplayback) {
             GST_ERROR ("could not create few elements");
             return DD_ERROR_PIPELINE_CREATE_FAIL;
         }
-        g_print("All elemnets are created ............\n");
+        GST_DEBUG ("All elements are created");
         gst_bin_add_many(GST_BIN(data->pipeline), data->src, data->capsfilter, data->preprocess, \
                          data->canny, data->edge_tracer, data->defect_calculator, data->sink_display, NULL);
 
@@ -409,7 +419,7 @@ create_pipeline (AppData *data, gboolean fileplayback) {
         GST_DEBUG ("Linked for src --> capsfilter --> preprocess --> canny --> edge_tracer --> defect_calculator --> sink successfully");
         return DD_SUCCESS;
     } else {
-        g_print ("It's a live playback\n");
+        GST_DEBUG ("It's a live playback");
         data->src                  =  gst_element_factory_make("mediasrcbin", "source");
         data->capsfilter           =  gst_element_factory_make("capsfilter",   "capsfilter");
         data->preprocess           =  gst_element_factory_make("ivas_xfilter", "pre-processing");
@@ -451,48 +461,53 @@ gint
 main (int argc, char **argv) {
     AppData data;
     GstBus *bus;
-    gboolean fileplayback = FALSE;
     gint ret = DD_SUCCESS;
     guint bus_watch_id;
+    GOptionContext *optctx;
+    GError *error = NULL;
 
     memset (&data, 0, sizeof(AppData));
-    data.width = MAX_WIDTH;
-    data.height = MAX_HEIGHT;
-    data.framerate = MAX_SUPPORTED_FRAME_RATE;
 
     gst_init(&argc, &argv);
     signal(SIGINT, signal_handler);
 
     GST_DEBUG_CATEGORY_INIT (defectdetection_app, "defectdetection-app", 0, "defect detection app");
+    optctx = g_option_context_new ("- Application for defect detction on SoM board of Xilinx.");
+    g_option_context_add_main_entries (optctx, entries, NULL);
+    g_option_context_add_group (optctx, gst_init_get_option_group ());
+    if (!g_option_context_parse (optctx, &argc, &argv, &error)) {
+        g_printerr ("Error parsing options: %s\n", error->message);
+        g_option_context_free (optctx);
+        g_clear_error (&error);
+        return -1;
+    }
+    g_option_context_free (optctx);
 
-    if (!strcmp (argv[1], "-f"))
-        fileplayback = TRUE;
-    else if (!strcmp (argv[1], "-l"))
-        fileplayback = FALSE;
-
-    if (!strcmp (argv[2], "-w")) {
-        data.width = atoi (argv[3]);
-    } else {
-        printf ("saket width option mismatch \n");
-        return -1;
-    }
-    if  (!strcmp (argv[4], "-h")) {
-        data.height = atoi (argv[5]);
-    } else {
-        printf ("saket height option mismatch \n");
-        return -1;
-    }
-    if  (!strcmp (argv[6], "-fps")) {
-        data.framerate = atoi (argv[7]);
-    } else {
-        printf ("saket height option mismatch \n");
-        return -1;
-    }
     if (fileplayback) {
-        data.in_file = g_strdup (argv[8]);
-        data.out_file = g_strdup (argv[9]);
+        if (!in_file || !out_file) {
+            GST_ERROR ("In case of file playback, input file and output file MUST be given");
+            return -1;
+        }
+    } else {
+        if (in_file || out_file) {
+            GST_ERROR ("In case of live playback, input file and output file should NOT be given");
+            return -1;
+        }
     }
-    if (data.width > MAX_WIDTH || data.height > MAX_HEIGHT) {
+    if (in_file) {
+        GST_DEBUG ("In file is %s", in_file);
+    }
+    if (out_file) {
+        GST_DEBUG ("In file is %s", out_file);
+    }
+    GST_DEBUG ("Width is %d", width);
+    GST_DEBUG ("height is %d", height);
+    GST_DEBUG ("framerate is %d", framerate);
+    GST_DEBUG ("fileplayback is %d", fileplayback);
+    if (config_path)
+        GST_DEBUG ("config path is %s", config_path);
+
+    if (width > MAX_WIDTH || height > MAX_HEIGHT) {
         ret = DD_ERROR_RESOLUTION_NOT_SUPPORTED;
         GST_ERROR ("Exiting the app with an error: %s", error_to_string (ret));
         return ret;
@@ -557,10 +572,12 @@ CLOSE:
     GST_DEBUG ("Removing bus");
     g_source_remove (bus_watch_id);
 
-    if (data.in_file)
-        g_free (data.in_file);
-    if (data.out_file)
-        g_free (data.out_file);
+    if (in_file)
+        g_free (in_file);
+    if (out_file)
+        g_free (out_file);
+    if (config_path)
+        g_free (config_path);
 
     return ret;
 }
