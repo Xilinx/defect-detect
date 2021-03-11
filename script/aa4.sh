@@ -13,20 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 LD_LIBRARY_PATH="/opt/xilinx/lib/:${LD_LIBRARY_PATH}" \
-gst-launch-1.0 \
-filesrc location="/usr/share/somapp/movies/walking-people.nv12.30fps.1080p.h264" \
-  ! h264parse ! omxh264dec internal-entropy-buffers=3 \
-  ! video/x-raw, format=NV12 \
-  ! tee name=t0 t0.src_0 ! queue \
-    ! ivas_xmultisrc kconfig="/opt/xilinx/share/aibox_aa4/ped_pp.json" \
-    ! ivas_xfilter name=refinedet kernels-config="/opt/xilinx/share/aibox_aa4/refinedet.json" ! queue \
-    ! ivas_xfilter name=crop      kernels-config="/opt/xilinx/share/aibox_aa4/crop.json" ! queue \
-    ! ivas_xfilter kernels-config="/opt/xilinx/share/aibox_aa4/reid.json" ! queue \
-    ! scalem0.sink_master ivas_xmetaaffixer name=scalem0 scalem0.src_master \
-    ! fakesink \
-  t0.src_1 ! queue ! \
-    scalem0.sink_slave_0 scalem0.src_slave_0 ! queue \
-    ! ivas_xfilter kernels-config="/opt/xilinx/share/aibox_aa4/draw_reid.json" ! queue \
-    ! kmssink driver-name=xlnx plane-id=39 sync=false fullscreen-overlay=true
+gst-launch-1.0 -v mediasrcbin media-device=/dev/media0 \
+! "video/x-raw, width=1280, height=800, format=GRAY8, framerate=60/1" \
+! tee name=t_src t_src. ! queue \
+! ivas_xfilter kernels-config=/opt/xilinx/share/defectdetection_aa4/pre-process.json \
+! tee name=t_pre t_pre. ! queue \
+! ivas_xfilter kernels-config=/opt/xilinx/share/defectdetection_aa4/canny-accelarator.json \
+! ivas_xfilter kernels-config=/opt/xilinx/share/defectdetection_aa4/edge-tracer.json \
+! ivas_xfilter kernels-config=/opt/xilinx/share/defectdetection_aa4/defect-calculation.json  \
+! tee ! perf \
+! kmssink  bus-id=B0010000.v_mix  plane-id=34 render-rectangle="<0,0,1280,800>"  t_src. \
+! queue ! perf \
+! kmssink bus-id=B0010000.v_mix  plane-id=35 render-rectangle="<1280,800,1280,800>" async=false t_pre. \
+! queue ! perf \
+! kmssink bus-id=B0010000.v_mix  plane-id=36 render-rectangle="<2560,0,1280,800>" async=false

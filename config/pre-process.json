@@ -1,10 +1,10 @@
 {
-  "xclbin-location": "/media/sd-mmcblk1p1/new_rootfs/krnl_threshold.xclbin",
+  "xclbin-location": "/media/sd-mmcblk1p1/new_rootfs/defect-detection.xclbin",
   "ivas-library-repo": "/usr/lib/ivas",
   "element-mode": "transform",
   "kernels": [
     {
-      "kernel-name": "threshold_accel:threshold_accel_1",
+      "kernel-name": "preprocess_accel:preprocess_accel_1",
       "library-name": "libivas_prepros_filter.so",
       "config": {
         "debug_level" : 1,

@@ -16,7 +16,7 @@
 
 cmake_minimum_required(VERSION 3.5)
 
-project(aibox_aa4)
+project(defectdetection_aa4)
 
 SET(CMAKE_INSTALL_PREFIX $ENV{OECORE_TARGET_SYSROOT})
 
@@ -56,11 +56,11 @@ target_link_libraries(ivas_preprocess
   jansson ivasutil gstivasinfermeta-1.0)
 install(TARGETS ivas_preprocess DESTINATION ${INSTALL_PATH}/lib)
 
-add_executable(aibox_aa4 src/main.cpp)
-target_include_directories(aibox_aa4 PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(aibox_aa4 
+add_executable(defectdetection_aa4 src/main.cpp)
+target_include_directories(defectdetection_aa4 PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_link_libraries(defectdetection_aa4
   gstapp-1.0 gstreamer-1.0 gstbase-1.0 gobject-2.0 glib-2.0 gstvideo-1.0 gstallocators-1.0 glib-2.0 gobject-2.0 )
-install(TARGETS aibox_aa4 DESTINATION ${INSTALL_PATH}/bin)
+install(TARGETS defectdetection_aa4 DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES
     README
@@ -77,7 +77,7 @@ install(FILES
     config/defect-calculation.json
     config/edge-tracer.json
     config/pre-process.json
-    DESTINATION ${INSTALL_PATH}/share/aibox_aa4)
+    DESTINATION ${INSTALL_PATH}/share/defectdetection_aa4)
 
 
 set(VERSION "1.0.1")

@@ -24,12 +24,12 @@
 #include <gst/ivas/gstinferencemeta.h>
 #include "ivas_defectcalc.hpp"
 
-int log_level = LOG_LEVEL_WARNING;
 
+int log_level;
 using namespace cv;
 using namespace std;
 
-#define MAX_DEFECT_THRESHOLD  0.15
+#define DEFAULT_DEFECT_THRESHOLD  0.15
 
 struct overlayframe_info
 {
@@ -42,6 +42,7 @@ struct overlayframe_info
 struct ivas_xoverlaypriv
 {
   float font_size;
+  float defect_threshold;
   unsigned int font;
   unsigned int y_offset;
   unsigned int x_offset;
@@ -59,49 +60,56 @@ extern "C"
 
     ivas_xoverlaypriv *kpriv =
         (ivas_xoverlaypriv *) malloc (sizeof (ivas_xoverlaypriv));
-      memset (kpriv, 0, sizeof (ivas_xoverlaypriv));
+    memset (kpriv, 0, sizeof (ivas_xoverlaypriv));
 
     json_t *jconfig = handle->kernel_config;
     json_t *val;
 
     /* Initialize config params with default values */
-    log_level = LOG_LEVEL_WARNING;
-    kpriv->font_size = 0.5;
-    kpriv->font = 0;
     kpriv->total_detection = 0;
     kpriv->total_defect = 0;
-    kpriv->y_offset = 30;
-    kpriv->x_offset = 800;
 
-     val = json_object_get (jconfig, "debug_level");
+    val = json_object_get (jconfig, "debug_level");
     if (!val || !json_is_integer (val))
         log_level = LOG_LEVEL_WARNING;
     else
         log_level = json_integer_value (val);
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "log level %u", log_level);
 
-      val = json_object_get (jconfig, "font_size");
-    if (!val || !json_is_integer (val))
+    val = json_object_get (jconfig, "font_size");
+    if (!val || !json_is_number (val))
         kpriv->font_size = 0.5;
     else
-        kpriv->font_size = json_integer_value (val);
+        kpriv->font_size = json_number_value (val);
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "font size %lf", kpriv->font_size);
 
-      val = json_object_get (jconfig, "font");
+    val = json_object_get (jconfig, "font");
     if (!val || !json_is_integer (val))
         kpriv->font = 0;
     else
         kpriv->font = json_integer_value (val);
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "font type %u", kpriv->font);
 
-      val = json_object_get (jconfig, "y_offset");
+    val = json_object_get(jconfig, "defect_threshold");
+    if (!val || !json_is_number(val))
+        kpriv->defect_threshold = DEFAULT_DEFECT_THRESHOLD;
+    else
+        kpriv->defect_threshold = json_number_value(val);
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "defect threshold %lf", kpriv->defect_threshold);
+
+    val = json_object_get (jconfig, "y_offset");
     if (!val || !json_is_integer (val))
-        kpriv->y_offset = 0;
+        kpriv->y_offset = 30;
     else
         kpriv->y_offset = json_integer_value (val);
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "Y Offset %u", kpriv->y_offset);
 
-      val = json_object_get (jconfig, "x_offset");
+    val = json_object_get (jconfig, "x_offset");
     if (!val || !json_is_integer (val))
-        kpriv->x_offset = 0;
+        kpriv->x_offset = 800;
     else
         kpriv->x_offset = json_integer_value (val);
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "X Offset %u", kpriv->x_offset);
 
     handle->kernel_priv = (void *) kpriv;
     return 0;
@@ -121,8 +129,6 @@ extern "C"
   uint32_t xlnx_kernel_start (IVASKernel * handle, int start,
       IVASFrame * input[MAX_NUM_OBJECT], IVASFrame * output[MAX_NUM_OBJECT])
   {
-    LOG_MESSAGE (LOG_LEVEL_DEBUG, "enter");
-
     ivas_xoverlaypriv *kpriv = (ivas_xoverlaypriv *) handle->kernel_priv;
     struct overlayframe_info *frameinfo = &(kpriv->frameinfo);
     frameinfo->inframe = input[0];
@@ -143,35 +149,34 @@ extern "C"
     double contour_area  = 0, total_contour_area = 0;
 
     for(size_t i = 0; i < contours.size(); i++ ) {
-        contour_area = cv::contourArea(contours[i]);
-        if (largest_contour_area < contour_area) {
-            largest_contour = i;
-            largest_contour_area = contour_area;
-        } else if (second_largest_contour_area < contour_area && second_largest_contour_area < largest_contour_area) {
-            second_largest_contour = i;
-            second_largest_contour_area = contour_area;
-        }
-        
-        total_contour_area += contour_area;
+      contour_area = cv::contourArea(contours[i]);
+      if (largest_contour_area < contour_area) {
+         largest_contour = i;
+         largest_contour_area = contour_area;
+      } else if (second_largest_contour_area < contour_area && second_largest_contour_area < largest_contour_area) {
+        second_largest_contour = i;
+        second_largest_contour_area = contour_area;
+      }
+
+      total_contour_area += contour_area;
     }
     frameinfo->lumaOutImg = cv::Mat::zeros(frameinfo->lumaOutImg.size(), CV_8U);
     for(i = 0; i < contours.size(); i++ ) {
-        if (i == largest_contour || i == second_largest_contour)
-            continue;
-        drawContours(frameinfo->lumaOutImg, contours, i , 255, cv::FILLED);
+      if (i == largest_contour || i == second_largest_contour)
+        continue;
+      drawContours(frameinfo->lumaOutImg, contours, i , 255, cv::FILLED);
     }
     cv::Mat full_mango_image = cv::Mat::zeros(frameinfo->lumaImg.size(), CV_8U);
     drawContours(full_mango_image, contours, largest_contour, 255, cv::FILLED);
     double full_mango_pixels = cv::countNonZero(full_mango_image);
-    double defect_threshold = MAX_DEFECT_THRESHOLD;
     double defect_pixels = cv::countNonZero(frameinfo->lumaOutImg);
     double defect_density = (defect_pixels/full_mango_pixels)*100;
-    bool defect_decision = (defect_density > defect_threshold);
+    bool defect_decision = (defect_density > kpriv->defect_threshold);
 
     char text_buffer[512];
     int y_point = kpriv->y_offset;
     if (defect_decision) {
-        kpriv->total_defect++;
+      kpriv->total_defect++;
     }
     kpriv->total_detection++;
 
@@ -181,13 +186,13 @@ extern "C"
             Scalar (255.0, 255.0, 255.0), 1, 1);
     y_point += 30;
 
-    sprintf(text_buffer, "Mango Defected: %s", defect_decision ? "Yes": "No");
+    sprintf(text_buffer, "Is Defected: %s", defect_decision ? "Yes": "No");
     /* Draw label text on the filled rectanngle */
     putText(frameinfo->lumaOutImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
             Scalar (255.0, 255.0, 255.0), 1, 1);
     y_point += 30;
 
-    sprintf(text_buffer, "Number of defects over total detection: %.2lf", ((double)kpriv->total_defect/kpriv->total_detection) * 100.0);
+    sprintf(text_buffer, "Number of defects: %u", kpriv->total_defect);
     /* Draw label text on the filled rectanngle */
     putText(frameinfo->lumaOutImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
             Scalar (255.0, 255.0, 255.0), 1, 1);
@@ -199,7 +204,6 @@ extern "C"
 
   int32_t xlnx_kernel_done (IVASKernel * handle)
   {
-    LOG_MESSAGE (LOG_LEVEL_DEBUG, "enter");
     return 0;
   }
 }

@@ -1,15 +1,17 @@
 {
-  "xclbin-location":"/media/sd-mmcblk1p1/new_rootfs/krnl_threshold.xclbin",
+  "xclbin-location": "/media/sd-mmcblk1p1/new_rootfs/defect-detection.xclbin",
   "ivas-library-repo": "/usr/lib/",
   "element-mode":"transform",
   "kernels" :[
     {
       "library-name":"libivas_defectcalc.so",
       "config": {
-        "font_size" : 1,
+        "debug_level" : 1,
+        "font_size" : 1.0,
         "font" : 3,
         "x_offset" : 50,
-        "y_offset" : 50
+        "y_offset" : 50,
+        "defect_threshold" : 0.15
       }
     }
   ]
