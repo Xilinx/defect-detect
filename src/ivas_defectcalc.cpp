@@ -180,18 +180,21 @@ extern "C"
     }
     kpriv->total_detection++;
 
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "Defect Density: %.2lf %%", defect_density);
     sprintf(text_buffer, "Defect Density: %.2lf %%", defect_density);
     /* Draw label text on the filled rectanngle */
     putText(frameinfo->lumaOutImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
             Scalar (255.0, 255.0, 255.0), 1, 1);
     y_point += 30;
 
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "Is Defected: %s", defect_decision ? "Yes": "No");
     sprintf(text_buffer, "Is Defected: %s", defect_decision ? "Yes": "No");
     /* Draw label text on the filled rectanngle */
     putText(frameinfo->lumaOutImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
             Scalar (255.0, 255.0, 255.0), 1, 1);
     y_point += 30;
 
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "Number of defects: %u", kpriv->total_defect);
     sprintf(text_buffer, "Number of defects: %u", kpriv->total_defect);
     /* Draw label text on the filled rectanngle */
     putText(frameinfo->lumaOutImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,

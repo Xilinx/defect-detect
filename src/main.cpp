@@ -129,6 +129,11 @@ cb_message (GstBus *bus, GstMessage *msg, AppData *data) {
     GError *err;
     gchar *debug;
     switch (GST_MESSAGE_TYPE (msg)) {
+    case GST_MESSAGE_INFO:
+        gst_message_parse_info (msg, &err, &debug);
+        if (debug)
+            GST_DEBUG ("INFO: %s", debug);
+    break;
     case GST_MESSAGE_ERROR:
         gst_message_parse_error (msg, &err, &debug);
         g_printerr ("Error: %s\n", err->message);
@@ -530,7 +535,7 @@ main (int argc, char **argv) {
     }
     /* we add a message handler */
     bus = gst_pipeline_get_bus (GST_PIPELINE (data.pipeline));
-    bus_watch_id = gst_bus_add_watch (bus, cb_message, &data);
+    bus_watch_id = gst_bus_add_watch (bus, (GstBusFunc)(cb_message), &data);
     gst_object_unref (bus);
 
     g_signal_connect (data.src, "pad-added", G_CALLBACK (pad_added_cb), &data);

@@ -1,6 +1,6 @@
 {
-  "xclbin-location": "/media/sd-mmcblk1p1/new_rootfs/defect-detection.xclbin",
-  "ivas-library-repo": "/usr/lib/",
+  "xclbin-location": "/usr/lib/defect-detection.xclbin",
+  "ivas-library-repo": "/opt/xilinx/lib",
   "element-mode":"transform",
   "kernels" :[
     {

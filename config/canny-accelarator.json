@@ -1,13 +1,13 @@
 {
-  "xclbin-location": "/media/sd-mmcblk1p1/new_rootfs/defect-detection.xclbin",
-  "ivas-library-repo": "/usr/lib/ivas",
+  "xclbin-location": "/usr/lib/defect-detection.xclbin",
+  "ivas-library-repo": "/opt/xilinx/lib",
   "element-mode": "transform",
   "kernels": [
     {
       "kernel-name": "canny_accel:canny_accel_1",
       "library-name": "libivas_canny_edge.so",
       "config": {
-        "debug_level" : 4,
+        "debug_level" : 1,
         "min_thr": 40,
         "max_thr": 255
       }
