@@ -1,5 +1,5 @@
 #
-# Copyright 2019 Xilinx Inc.
+# Copyright 2021 Xilinx Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ add_library(ivas_defectcalc SHARED src/ivas_defectcalc.cpp src/ivas_defectcalc.h
 target_include_directories(ivas_defectcalc PRIVATE ${GSTREAMER_INCLUDE_DIRS})
 target_link_libraries(ivas_defectcalc
   gstreamer-1.0 gstbase-1.0 gobject-2.0 glib-2.0 gstvideo-1.0 gstallocators-1.0
-  gstivasmeta-1.0 jansson ivasutil ${OpenCV_LIBS} gstivasinfermeta-1.0 glog)
+  gstivasinfermeta-1.0 jansson ivasutil ${OpenCV_LIBS} glog)
 install(TARGETS ivas_defectcalc DESTINATION ${INSTALL_PATH}/lib)
 
 add_library(ivas_preprocess SHARED src/ivas_preprocess.c)
