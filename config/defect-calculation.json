@@ -11,7 +11,8 @@
         "font" : 3,
         "x_offset" : 50,
         "y_offset" : 50,
-        "defect_threshold" : 0.15
+        "defect_threshold" : 0.15,
+        "is_acc_result" : 1
       }
     }
   ]

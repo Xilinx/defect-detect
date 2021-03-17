@@ -69,8 +69,12 @@ Before booting the board, please connect the monitor to the board via either DP 
        --intype and --cfgpath, to specify the input file location, output file location, width, height, framerate, 
        input type(live/file) and config file path and the displayed position in the 3 grids of the 4k monitor.
 
-       ./defectdetection_aa4 -w 1280 -h 800 -r 60 -f 0 -m /dev/media0            // for live playback
-       ./defectdetection_aa4 -i raw.yuv -o out.yuv -w 1280 -h 800 -r 60  -f 1    // for file playback
+       // for normal live playback, run below command
+       defectdetection_aa4 -w 1280 -h 800 -r 60 -f 0 -d 0 -m /dev/media0
+       // for live playback in demo mode, run below command
+       defectdetection_aa4 -w 1280 -h 800 -r 60 -f 0 -d 1 -m /dev/media0
+       // for file playback,  run below command
+       defectdetection_aa4 -w 1280 -h 800 -r 60 -f 1 -i input.yuv -x raw.yuv -y pre_pros.yuv -z final.yuv
 
 
 4. Command Option:
@@ -84,11 +88,14 @@ Before booting the board, please connect the monitor to the board via either DP 
 
 >       Application Options:
 >       -i, --infile=file path            location of GRAY8 file as input
->       -o, --outfile=file path           location of GRAY8 file as output
+>       -x, --rawout=file path            location of GRAY8 file as raw MIPI output
+>       -y, --preprocessout=file path     location of GRAY8 file as pre-processed output
+>       -z, --finalout=file path          location of GRAY8 file as final stage output
 >       -w, --width=1280                  resolution width of the input
 >       -h, --height=800                  resolution height of the input
 >       -r, --framerate=60                framerate of the input source
->       -f, --inputtype                   For live playback value must be 0 otherwise 1
+>       -f, --inputtype                   For live playback value must be 0 otherwise 1, default is 0
+>       -d, --demomode                    For demo mode value must be 1 otherwise 0, default is 0
 >       -m, --mediatype                   Media node should be provided in live use case, default is /dev/media0
 >       -c, --cfgpath=config path         JSON file path
 
