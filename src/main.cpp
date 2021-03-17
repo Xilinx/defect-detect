@@ -33,12 +33,10 @@ using namespace std;
 GST_DEBUG_CATEGORY (defectdetection_app);
 #define GST_CAT_DEFAULT defectdetection_app
 
-#define CONFIG_FILE_PATH             "/opt/xilinx/share/defectdetection_aa4/"
 #define PRE_PROCESS_JSON_FILE        "pre-process.json"
 #define CANNY_ACC_JSON_FILE          "canny-accelarator.json"
 #define EDGE_TRACER_JSON_FILE        "edge-tracer.json"
 #define DEFECT_CALC_JSON_FILE        "defect-calculation.json"
-#define MEDIA_DEVICE_NODE            "/dev/media0"
 #define DRM_BUS_ID                   "B0010000.v_mix"
 #define CAPTURE_FORMAT_Y8            "GRAY8"
 #define MAX_WIDTH                    1280
@@ -71,7 +69,8 @@ typedef struct _AppData {
 GMainLoop *loop;
 gboolean fileplayback = FALSE;
 static gchar* in_file = NULL;
-static gchar* config_path = "/opt/xilinx/share/defectdetection_aa4/";
+static gchar* config_path = "/opt/xilinx/share/ivas/defectdetection_aa4/";
+static gchar* media_node = "/dev/media0";
 static gchar* out_file = NULL;
 guint width = 1280;
 guint height = 800;
@@ -84,7 +83,8 @@ static GOptionEntry entries[] =
     { "width",     'w', 0, G_OPTION_ARG_INT, &width, "resolution width of the input", "1280"},
     { "height",    'h', 0, G_OPTION_ARG_INT, &height, "resolution height of the input", "800"},
     { "framerate", 'r', 0, G_OPTION_ARG_INT, &framerate, "framerate of the input source", "60"},
-    { "intype",    'f', 0, G_OPTION_ARG_INT, &fileplayback, "For live playback value must be 0 otherwise 1", NULL},
+    { "inputtype", 'f', 0, G_OPTION_ARG_INT, &fileplayback, "For live playback value must be 0 otherwise 1", NULL},
+    { "mediatype", 'm', 0, G_OPTION_ARG_STRING, &media_node, "Media node should be provided in live use case, default is /dev/media0", NULL},
     { "cfgpath",   'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON file path", "config path"},
     { NULL }
 };
@@ -221,7 +221,7 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
         g_object_set(G_OBJECT(data->src),          "blocksize", block_size,     NULL);
         g_object_set(G_OBJECT(data->sink_display), "location",  out_file, NULL);
     } else {
-        g_object_set(G_OBJECT(data->src),          "media-device", MEDIA_DEVICE_NODE, NULL);
+        g_object_set(G_OBJECT(data->src),          "media-device", media_node, NULL);
 
         g_object_set(G_OBJECT(data->sink_raw),     "bus-id",       DRM_BUS_ID,        NULL);
         g_object_set(G_OBJECT(data->sink_raw),     "plane-id",     plane_id++,        NULL);
@@ -511,6 +511,8 @@ main (int argc, char **argv) {
     GST_DEBUG ("fileplayback is %d", fileplayback);
     if (config_path)
         GST_DEBUG ("config path is %s", config_path);
+    if (media_node)
+        GST_DEBUG ("media node is %s", media_node);
 
     if (width > MAX_WIDTH || height > MAX_HEIGHT) {
         ret = DD_ERROR_RESOLUTION_NOT_SUPPORTED;
@@ -581,9 +583,6 @@ CLOSE:
         g_free (in_file);
     if (out_file)
         g_free (out_file);
-    if (config_path)
-        g_free (config_path);
-
     return ret;
 }
 

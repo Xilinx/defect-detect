@@ -1,11 +1,11 @@
 {
-  "xclbin-location": "/usr/lib/defect-detection.xclbin",
+  "xclbin-location": "/lib/firmware/xilinx/kv260-defect-detection-aa4/kv260-defect-detection-aa4.xclbin",
   "ivas-library-repo": "/opt/xilinx/lib",
   "element-mode": "transform",
   "kernels": [
     {
       "kernel-name": "preprocess_accel:preprocess_accel_1",
-      "library-name": "libivas_prepros_filter.so",
+      "library-name": "libivas_preprocess.so",
       "config": {
         "debug_level" : 1,
         "threshold": 60,

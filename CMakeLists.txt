@@ -77,7 +77,7 @@ install(FILES
     config/defect-calculation.json
     config/edge-tracer.json
     config/pre-process.json
-    DESTINATION ${INSTALL_PATH}/share/defectdetection_aa4)
+    DESTINATION ${INSTALL_PATH}/share/ivas/defectdetection_aa4)
 
 
 set(VERSION "1.0.1")

@@ -17,7 +17,7 @@ Binary File: => /opt/xilinx/bin
 
 defectdetection_aa4                   main app
 
-configuration File: => /opt/xilinx/share/defectdetection_aa4
+configuration File: => /opt/xilinx/share/ivas/defectdetection_aa4
 
 |||
 |-|-|
@@ -36,10 +36,11 @@ The accelerated application (AA) firmware consist of bitstream, device tree over
 
          You should see similar output to this:
 
->         Accelerator,     Type,   Active
->         kv260-aa4,       flat,   0
->         kv260-aa2,       flat,   0
->         kv260-aa1,       flat,   0
+>       Accelerator                   Type    Active
+>       kv260-smartcamera-aa1         XRT_FLAT         0
+>       base                          XRT_FLAT         0
+>       kv260-aibox-aa2               XRT_FLAT         0
+>       kv260-defect-detection-aa4    XRT_FLAT         0
 
          The Active column shows which AA is currently loaded in the system. It will change to 1 after the firmware is loaded.
 
@@ -47,7 +48,7 @@ The accelerated application (AA) firmware consist of bitstream, device tree over
 
          run the following command:
 
-         `xmutil loadapp kv260-aa4`
+         `xmutil loadapp kv260-defect-detection-aa4`
 
    3. After you are done running the application, you can unload the curently loaded AA application firmware by running:
 
@@ -68,8 +69,8 @@ Before booting the board, please connect the monitor to the board via either DP 
        --intype and --cfgpath, to specify the input file location, output file location, width, height, framerate, 
        input type(live/file) and config file path and the displayed position in the 3 grids of the 4k monitor.
 
-       ./defectdetection_aa4  -w 1280 -h 800 -r 60 -f 0                      // for live playback
-       ./defectdetection_aa4 -i raw.yuv -o out.yuv -w 1280 -h 800 -r 60 -f 1 // for file playback
+       ./defectdetection_aa4 -w 1280 -h 800 -r 60 -f 0 -m /dev/media0            // for live playback
+       ./defectdetection_aa4 -i raw.yuv -o out.yuv -w 1280 -h 800 -r 60  -f 1    // for file playback
 
 
 4. Command Option:
@@ -87,7 +88,8 @@ Before booting the board, please connect the monitor to the board via either DP 
 >       -w, --width=1280                  resolution width of the input
 >       -h, --height=800                  resolution height of the input
 >       -r, --framerate=60                framerate of the input source
->       -f, --intype                      For live playback value must be 0 otherwise 1
+>       -f, --inputtype                   For live playback value must be 0 otherwise 1
+>       -m, --mediatype                   Media node should be provided in live use case, default is /dev/media0
 >       -c, --cfgpath=config path         JSON file path
 
 <p align="center"><sup>Copyright&copy; 2021 Xilinx</sup></p>

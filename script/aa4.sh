@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-LD_LIBRARY_PATH="/opt/xilinx/lib/:${LD_LIBRARY_PATH}" \
 gst-launch-1.0 -v mediasrcbin media-device=/dev/media0 \
 ! "video/x-raw, width=1280, height=800, format=GRAY8, framerate=60/1" \
 ! tee name=t_src t_src. ! queue \
@@ -23,8 +22,8 @@ gst-launch-1.0 -v mediasrcbin media-device=/dev/media0 \
 ! ivas_xfilter kernels-config=/opt/xilinx/share/defectdetection_aa4/edge-tracer.json \
 ! ivas_xfilter kernels-config=/opt/xilinx/share/defectdetection_aa4/defect-calculation.json  \
 ! tee ! perf \
-! kmssink  bus-id=B0010000.v_mix  plane-id=34 render-rectangle="<0,0,1280,800>"  t_src. \
+! kmssink  bus-id=B0010000.v_mix  plane-id=34 render-rectangle="<1280,800,1280,800>"  t_src. \
 ! queue ! perf \
-! kmssink bus-id=B0010000.v_mix  plane-id=35 render-rectangle="<1280,800,1280,800>" async=false t_pre. \
+! kmssink bus-id=B0010000.v_mix  plane-id=35 render-rectangle="<0,0,1280,800>" async=false t_pre. \
 ! queue ! perf \
 ! kmssink bus-id=B0010000.v_mix  plane-id=36 render-rectangle="<2560,0,1280,800>" async=false
