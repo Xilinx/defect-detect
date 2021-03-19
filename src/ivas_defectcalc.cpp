@@ -152,33 +152,39 @@ extern "C"
     frameinfo->lumaOutImg.data = (unsigned char *) lumaOutBuf;
 
     cv::findContours(frameinfo->lumaImg, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-    long unsigned int i = 0, largest_contour_pos = 0, second_largest_contour_pos = 0;
-    double largest_contour_area = 0, second_largest_contour_area = 0;
-    double contour_area  = 0, total_contour_area = 0;
+    long unsigned int i = 0, mango_contour_pos = 0, temp_contour_pos = 0;
+    double mango_contour_area = 0, contour_area  = 0, total_contour_area = 0;
+    double temp_contour_area = 0, defect_contour_area = 0;
 
-    for(size_t i = 0; i < contours.size(); i++ ) {
+    for(i = 0; i < contours.size(); i++ ) {
       contour_area = cv::contourArea(contours[i]);
-      if (largest_contour_area < contour_area) {
-         largest_contour_pos = i;
-         largest_contour_area = contour_area;
-      } else if (second_largest_contour_area < contour_area && second_largest_contour_area < largest_contour_area) {
-        second_largest_contour_pos = i;
-        second_largest_contour_area = contour_area;
+      if (mango_contour_area < contour_area) {
+         mango_contour_pos = i;
+         mango_contour_area = contour_area;
+      } else if (temp_contour_area < contour_area){
+         temp_contour_pos = i;
+         temp_contour_area = contour_area;
       }
-
       total_contour_area += contour_area;
+    }
+    /* largest contour and 2nd largest contour will be almost same size and
+    *  it belongs to same. Below logic is to check if it matches then ignore
+    *  2nd largest contour into the calculation.
+    */
+    if (temp_contour_area > (95 * mango_contour_area)/100) {
+      total_contour_area -= temp_contour_area;
+      temp_contour_area = 0;
+    } else {
+      temp_contour_pos = mango_contour_pos;
     }
     frameinfo->lumaOutImg = cv::Mat::zeros(frameinfo->lumaOutImg.size(), CV_8U);
     for(i = 0; i < contours.size(); i++ ) {
-      if (i == largest_contour_pos || i == second_largest_contour_pos)
+      if (i == mango_contour_pos || i == temp_contour_pos)
         continue;
-      drawContours(frameinfo->lumaOutImg, contours, i , 255, cv::FILLED);
+      drawContours(frameinfo->lumaOutImg, contours, i, 255, cv::FILLED);
     }
-    cv::Mat full_mango_image = cv::Mat::zeros(frameinfo->lumaImg.size(), CV_8U);
-    drawContours(full_mango_image, contours, largest_contour_pos, 255, cv::FILLED);
-    double full_mango_pixels = cv::countNonZero(full_mango_image);
-    double defect_pixels = cv::countNonZero(frameinfo->lumaOutImg);
-    double defect_density = (defect_pixels/full_mango_pixels)*100;
+    defect_contour_area = total_contour_area - mango_contour_area;
+    double defect_density = (defect_contour_area / total_contour_area) * 100.0;
     bool defect_decision = (defect_density > kpriv->defect_threshold);
 
     char text_buffer[512];
