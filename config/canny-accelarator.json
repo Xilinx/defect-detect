@@ -1,5 +1,5 @@
 {
-  "xclbin-location": "/lib/firmware/xilinx/kv260-defect-detection-aa4/kv260-defect-detection-aa4.xclbin",
+  "xclbin-location": "/lib/firmware/xilinx/kv260-defect-detect/kv260-defect-detect.xclbin",
   "ivas-library-repo": "/opt/xilinx/lib",
   "element-mode": "transform",
   "kernels": [
@@ -8,8 +8,8 @@
       "library-name": "libivas_canny_edge.so",
       "config": {
         "debug_level" : 1,
-        "min_thr": 35,
-        "max_thr": 255
+        "thr1": 35,
+        "thr2": 255
       }
     }
   ]

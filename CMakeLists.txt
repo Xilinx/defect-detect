@@ -16,7 +16,7 @@
 
 cmake_minimum_required(VERSION 3.5)
 
-project(defectdetection_aa4)
+project(defect-detect)
 
 SET(CMAKE_INSTALL_PREFIX $ENV{OECORE_TARGET_SYSROOT})
 
@@ -56,20 +56,20 @@ target_link_libraries(ivas_preprocess
   jansson ivasutil gstivasinfermeta-1.0)
 install(TARGETS ivas_preprocess DESTINATION ${INSTALL_PATH}/lib)
 
-add_executable(defectdetection_aa4 src/main.cpp)
-target_include_directories(defectdetection_aa4 PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(defectdetection_aa4
+add_executable(defect-detect src/main.cpp)
+target_include_directories(defect-detect PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_link_libraries(defect-detect
   gstapp-1.0 gstreamer-1.0 gstbase-1.0 gobject-2.0 glib-2.0 gstvideo-1.0 gstallocators-1.0 glib-2.0 gobject-2.0 )
-install(TARGETS defectdetection_aa4 DESTINATION ${INSTALL_PATH}/bin)
+install(TARGETS defect-detect DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES
     README
     DESTINATION ${INSTALL_PATH}/
-    RENAME      README_AA4
+    RENAME      README_DEFECT_DETECT
     )
 
 install(PROGRAMS
-    script/aa4.sh
+    script/defect-detect.sh
     DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES
@@ -77,13 +77,13 @@ install(FILES
     config/defect-calculation.json
     config/edge-tracer.json
     config/pre-process.json
-    DESTINATION ${INSTALL_PATH}/share/ivas/defectdetection_aa4)
+    DESTINATION ${INSTALL_PATH}/share/ivas/defect-detect)
 
 
 set(VERSION "1.0.1")
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")
-set(CPACK_PACKAGE_NAME "DefectDetection_aa4")
+set(CPACK_PACKAGE_NAME "DefectDetect")
 set(CPACK_PACKAGE_RELEASE 1)
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
 set(CPACK_RPM_PACKAGE_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})

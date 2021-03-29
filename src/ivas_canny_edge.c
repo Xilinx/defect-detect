@@ -28,8 +28,8 @@
 
 typedef struct _kern_priv
 {
-    int min_thr;
-    int max_thr;
+    int thr1;
+    int thr2;
     int log_level;
 } PreProcessingKernelPriv;
 
@@ -65,19 +65,19 @@ int32_t xlnx_kernel_init(IVASKernel *handle)
 	    kernel_priv->log_level = json_integer_value (val);
     LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "IVAS PPE: debug_level %d", kernel_priv->log_level);
 
-    val = json_object_get (jconfig, "min_thr");
+    val = json_object_get (jconfig, "thr1");
     if (!val || !json_is_integer (val))
-	    kernel_priv->min_thr = DEFAULT_MIN_THR;
+	    kernel_priv->thr1 = DEFAULT_MIN_THR;
     else
-	    kernel_priv->min_thr = json_integer_value (val);
-    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "IVAS PPE: min_thr %d", kernel_priv->min_thr);
+	    kernel_priv->thr1 = json_integer_value (val);
+    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "IVAS PPE: thr1 %d", kernel_priv->thr1);
 
-    val = json_object_get (jconfig, "max_thr");
+    val = json_object_get (jconfig, "thr2");
     if (!val || !json_is_integer (val))
-	    kernel_priv->max_thr = DEFAULT_MAX_THR;
+	    kernel_priv->thr2 = DEFAULT_MAX_THR;
     else
-	    kernel_priv->max_thr = json_integer_value (val);
-    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "IVAS PPE: max_thr %d", kernel_priv->max_thr);
+	    kernel_priv->thr2 = json_integer_value (val);
+    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "IVAS PPE: thr2 %d", kernel_priv->thr2);
     handle->kernel_priv = (void *)kernel_priv;
     handle->is_multiprocess = 1;
     return 0;
@@ -92,8 +92,8 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x10);       /* Input buffer */
     ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x28);   /* In Y8 rows */
     ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t), 0x30);    /* In Y8 columns */
-    ivas_register_write(handle, &(kernel_priv->min_thr), sizeof(uint32_t), 0x38);   /* low threashold */
-    ivas_register_write(handle, &(kernel_priv->max_thr), sizeof(uint32_t), 0x40);   /* high threashold */
+    ivas_register_write(handle, &(kernel_priv->thr1), sizeof(uint32_t), 0x38);   /* low threashold */
+    ivas_register_write(handle, &(kernel_priv->thr2), sizeof(uint32_t), 0x40);   /* high threashold */
     ivas_register_write(handle, &(output[0]->paddr[0]), sizeof(uint64_t), 0x1C);      /* Output buffer */
 
     ret = ivas_kernel_start (handle);

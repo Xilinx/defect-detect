@@ -23,15 +23,20 @@
 #include <math.h>
 #include <glib.h>
 #include <gst/gst.h>
-#include <string.h>
 #include <stdio.h>
 #include <gst/video/videooverlay.h>
 #include <string>
+#include <string.h>
+#include <unistd.h>
+#include <set>
+#include <sstream>
+#include <memory>
+#include <stdexcept>
 
 using namespace std;
 
-GST_DEBUG_CATEGORY (defectdetection_app);
-#define GST_CAT_DEFAULT defectdetection_app
+GST_DEBUG_CATEGORY (defectdetect_app);
+#define GST_CAT_DEFAULT defectdetect_app
 
 #define PRE_PROCESS_JSON_FILE        "pre-process.json"
 #define CANNY_ACC_JSON_FILE          "canny-accelarator.json"
@@ -74,7 +79,7 @@ GMainLoop *loop;
 gboolean fileplayback = FALSE;
 gboolean demo_mode = FALSE;
 static gchar* in_file = NULL;
-static gchar* config_path = "/opt/xilinx/share/ivas/defectdetection_aa4/";
+static gchar* config_path = "/opt/xilinx/share/ivas/defect-detect/";
 static gchar* media_node = "/dev/media0";
 static gchar* out_file = NULL;
 static gchar* preprocess_file = NULL;
@@ -119,6 +124,19 @@ signal_handler (gint sig) {
         g_main_loop_quit (loop);
      }
      return;
+}
+
+static std::string exec(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
 }
 
 /** @brief
@@ -335,8 +353,8 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
 }
 
 /** @brief
- *  This function is to link all the elements required to run AA4
- *  use case.
+ *  This function is to link all the elements required to run defect
+ *  detect use case.
  *
  *  Link live playback pipeline.
  *
@@ -512,8 +530,8 @@ link_pipeline (AppData *data, gboolean fileplayback) {
 }
 
 /** @brief
- *  This function is to create a pipeline required to run AA4
- *  use case.
+ *  This function is to create a pipeline required to run defect
+ *  detect use case.
  *
  *  All GStreamer elements instance has to be created and add
  *  into the pipeline bin. Also link file based pipeline.
@@ -620,8 +638,8 @@ main (int argc, char **argv) {
     gst_init(&argc, &argv);
     signal(SIGINT, signal_handler);
 
-    GST_DEBUG_CATEGORY_INIT (defectdetection_app, "defectdetection-app", 0, "defect detection app");
-    optctx = g_option_context_new ("- Application for defect detction on SoM board of Xilinx.");
+    GST_DEBUG_CATEGORY_INIT (defectdetect_app, "defectdetect-app", 0, "defect detection app");
+    optctx = g_option_context_new ("- Application to detect the defect of Mango on SoM board of Xilinx.");
     g_option_context_add_main_entries (optctx, entries, NULL);
     g_option_context_add_group (optctx, gst_init_get_option_group ());
     if (!g_option_context_parse (optctx, &argc, &argv, &error)) {
@@ -667,6 +685,14 @@ main (int argc, char **argv) {
         ret = DD_ERROR_RESOLUTION_NOT_SUPPORTED;
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
         return ret;
+    }
+    if (!fileplayback) {
+        if (access("/dev/dri/by-path/platform-b0010000.v_mix-card", F_OK) != 0) {
+            g_printerr("ERROR: Mixer device is not ready.\n");
+            return 1;
+        } else {
+            exec("echo | modetest -D B0010000.v_mix -s 52@40:3840x2160@NV16");
+        }
     }
     ret = create_pipeline (&data, fileplayback);
     if (ret != DD_SUCCESS) {
