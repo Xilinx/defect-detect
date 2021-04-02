@@ -5,8 +5,8 @@
 
    1) Install the SoM sdk.sh to the path you choose or default. Suppose SDKPATH.
    2) Run "./build.sh ${SDKPATH}" to build the application.
-   3) The build process in 2) will produce a rpm package SoMApp-1.0.1-1.aarch64.rpm under build/, upload to the board,
-      and run "rmp -ivh --force ./DefectDetect-1.0.1-1.aarch64.rpm" to update install.
+   3) The build process in 2) will produce a rpm package DefectDetect-1.0.1-1.aarch64.rpm under build/, upload to the board,
+      go to the board where rpm resides and run "rpm -ivh --force ./DefectDetect-1.0.1-1.aarch64.rpm" to install updates.
 
 
 # File structure
