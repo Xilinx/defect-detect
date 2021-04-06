@@ -287,7 +287,7 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
         }
         data->overlay_raw = GST_VIDEO_OVERLAY (data->sink_raw);
         if (data->overlay_raw) {
-            ret = gst_video_overlay_set_render_rectangle (data->overlay_raw, 0, 0, width, height);
+            ret = gst_video_overlay_set_render_rectangle (data->overlay_raw, 0, 680, width, height);
             if (ret) {
                 gst_video_overlay_expose (data->overlay_raw);
                 ret = DD_SUCCESS;
@@ -299,7 +299,7 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
 
         data->overlay_preprocess = GST_VIDEO_OVERLAY (data->sink_preprocess);
         if (data->overlay_preprocess) {
-            ret = gst_video_overlay_set_render_rectangle (data->overlay_preprocess, 1280, 0, width, height);
+            ret = gst_video_overlay_set_render_rectangle (data->overlay_preprocess, 1280, 680, width, height);
             if (ret) {
                 gst_video_overlay_expose (data->overlay_preprocess);
                 ret = DD_SUCCESS;
@@ -311,7 +311,7 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
 
         data->overlay_display = GST_VIDEO_OVERLAY (data->sink_display);
         if (data->overlay_display) {
-            ret = gst_video_overlay_set_render_rectangle (data->overlay_display, 2560, 0, width, height);
+            ret = gst_video_overlay_set_render_rectangle (data->overlay_display, 2560, 680, width, height);
             if (ret) {
                 gst_video_overlay_expose (data->overlay_display);
                 ret = DD_SUCCESS;

@@ -154,7 +154,7 @@ extern "C"
     cv::findContours(frameinfo->lumaImg, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
     long unsigned int i = 0, mango_contour_pos = 0, temp_contour_pos = 0;
     double mango_contour_area = 0, contour_area  = 0, total_contour_area = 0;
-    double temp_contour_area = 0, defect_contour_area = 0;
+    double temp_contour_area = 0;
 
     for(i = 0; i < contours.size(); i++ ) {
       contour_area = cv::contourArea(contours[i]);
@@ -183,8 +183,9 @@ extern "C"
         continue;
       drawContours(frameinfo->lumaOutImg, contours, i, 255, cv::FILLED);
     }
-    defect_contour_area = total_contour_area - mango_contour_area;
-    double defect_density = (defect_contour_area / total_contour_area) * 100.0;
+    double defect_pixels = cv::countNonZero(frameinfo->lumaOutImg);
+    double total_pixel = input[0]->props.height * input[0]->props.stride;
+    double defect_density = (defect_pixels / total_pixel) * 100.0;
     bool defect_decision = (defect_density > kpriv->defect_threshold);
 
     char text_buffer[512];
