@@ -69,7 +69,7 @@ install(FILES
     )
 
 install(PROGRAMS
-    script/defect-detect.sh
+    script/01.mipi-defect-detect-display.sh
     DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES
