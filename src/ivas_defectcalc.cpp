@@ -29,7 +29,7 @@ int log_level;
 using namespace cv;
 using namespace std;
 
-#define DEFAULT_DEFECT_THRESHOLD  0.15
+#define DEFAULT_DEFECT_THRESHOLD  0.08
 
 struct overlayframe_info
 {
