@@ -251,18 +251,23 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
         g_object_set(G_OBJECT(data->sink_raw),       "location",  raw_file,        NULL);
         g_object_set(G_OBJECT(data->sink_preprocess),"location",  preprocess_file, NULL);
     } else {
-        g_object_set(G_OBJECT(data->src),             "media-device", media_node,  NULL);
+        g_object_set(G_OBJECT(data->queue_raw),         "max-size-buffers", 1,  NULL);
+        g_object_set(G_OBJECT(data->queue_raw2),        "max-size-buffers", 1,  NULL);
+        g_object_set(G_OBJECT(data->queue_preprocess),  "max-size-buffers", 1,  NULL);
+        g_object_set(G_OBJECT(data->queue_preprocess2), "max-size-buffers", 1,  NULL);
 
-        g_object_set(G_OBJECT(data->sink_raw),        "bus-id",       DRM_BUS_ID,  NULL);
-        g_object_set(G_OBJECT(data->sink_raw),        "plane-id",     plane_id++,  NULL);
-        g_object_set(G_OBJECT(data->sink_raw),        "async",        FALSE,       NULL);
+        g_object_set(G_OBJECT(data->src),               "media-device", media_node,  NULL);
 
-        g_object_set(G_OBJECT(data->sink_preprocess), "bus-id",       DRM_BUS_ID,  NULL);
-        g_object_set(G_OBJECT(data->sink_preprocess), "plane-id",     plane_id++,  NULL);
-        g_object_set(G_OBJECT(data->sink_preprocess), "async",        FALSE,       NULL);
+        g_object_set(G_OBJECT(data->sink_raw),          "bus-id",       DRM_BUS_ID,  NULL);
+        g_object_set(G_OBJECT(data->sink_raw),          "plane-id",     plane_id++,  NULL);
+        g_object_set(G_OBJECT(data->sink_raw),          "async",        FALSE,       NULL);
 
-        g_object_set(G_OBJECT(data->sink_display),    "bus-id",       DRM_BUS_ID,  NULL);
-        g_object_set(G_OBJECT(data->sink_display),    "plane-id",     plane_id++,  NULL);
+        g_object_set(G_OBJECT(data->sink_preprocess),   "bus-id",       DRM_BUS_ID,  NULL);
+        g_object_set(G_OBJECT(data->sink_preprocess),   "plane-id",     plane_id++,  NULL);
+        g_object_set(G_OBJECT(data->sink_preprocess),   "async",        FALSE,       NULL);
+
+        g_object_set(G_OBJECT(data->sink_display),      "bus-id",       DRM_BUS_ID,  NULL);
+        g_object_set(G_OBJECT(data->sink_display),      "plane-id",     plane_id++,  NULL);
         if (demo_mode) {
             caps  = gst_caps_new_simple ("video/x-raw",
                                          "framerate", GST_TYPE_FRACTION, MAX_DEMO_MODE_FRAME_RATE, MAX_FRAME_RATE_DENOM,
