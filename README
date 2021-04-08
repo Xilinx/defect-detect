@@ -75,7 +75,7 @@
     1. Interacting with the application
     The application is targeted to run an input source which support GRAY8(Y8) format. Input can be MIPI source or file based.
 
-    We assume the MIPI or file to be **1280x800 GRAY8(Y8)**
+    We assume the MIPI or file to support **1280x800 GRAY8(Y8)**
 
         There are two ways to interact with application, via Jyputer notebook or Command line
 
@@ -96,10 +96,6 @@
         2. Command Line
 
             **Note** The application needs to be run with ***sudo*** .
-            defect-detect can accept one or multi groups of options of --infile, --rawout, --preprocessout, --finalout,
-            --width, --height, --framerate, --inputtype, --demomode, --mediatype and --cfgpath, to specify the input file
-            location, output file locations, width, height, framerate, input type(live/file). demo mode or normal mode and
-            config file path and the displayed position in the 3 grids of the 4k monitor.
 
             * Examples:
             **Note** Only one instance of the application can run at a time.
@@ -109,10 +105,12 @@
 
             /* For live playback in demo mode, run below command */
             sudo defect-detect -w 1280 -h 800 -r 60 -f 0 -d 1 -m /dev/media0
+
             **Note** Only the framerate is the key difference b/w demo mode and normal mode. In the demo mode, framerate will be throttled to 4 fps. For the ease of user to read and understand the image/text displayed.
 
             /* for file playback,  run below command.
             sudo defect-detect -w 1280 -h 800 -r 60 -f 1 -i input.yuv -x raw.y8 -y pre_pros.y8 -z final.y8
+
             **Note** For file playback, all 3 stage output will be dumped into file. It's must to give option for all 3 output file name.
 
 
@@ -158,7 +156,7 @@
 
         | filename         | description                                  |
         |------------------|----------------------------------------------|
-        | canny-accelarator.json   |  Config of preprocess for canny accelarator.
+        | canny-accelarator.json   |  Config of canny accelarator.
         | defect-calculation.json  |  Config of defect calculation.
         | edge-tracer.json         |  Config of edge tracer accelarator.
         | pre-process.json         |  Config of pre process accelarator.
