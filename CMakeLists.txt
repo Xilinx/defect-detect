@@ -70,6 +70,7 @@ install(FILES
 
 install(PROGRAMS
     script/01.mipi-defect-detect-display.sh
+    script/02.mipi-defect-detect-display-demo-mode.sh
     DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES

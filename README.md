@@ -7,7 +7,7 @@ If you want to cross compile the source in Linux PC machine, follow these steps,
 
 2. Run "./build.sh ${SDKPATH}" in the source code folder of current application, to build the application. <a name="build-app"></a>
 
-3. The build process in [2](#build-app) will produce a rpm package DefectDetect-1.0.1-1.aarch64.rpm under build/, upload to the board, and run "rmp -ivh --force ./DefectDetect-1.0.1-1.aarch64.rpm" to install updates.
+3. The build process in [2](#build-app) will produce a rpm package DefectDetect-1.0.1-1.aarch64.rpm under build/, upload to the board, and run "rpm -ivh --force ./DefectDetect-1.0.1-1.aarch64.rpm" to install updates.
 
 # Setting up the Board
 
@@ -102,7 +102,7 @@ Output example:
    **Note** Only the framerate is the key difference b/w demo mode and normal mode. In the demo mode, framerate will be throttled to 4 fps. For the ease of user to read and understand the image/text displayed.
 
    * For file playback, run below command
-     > sudo defect-detect -w 1280 -h 800 -r 60 -f 1 -i input.yuv -x raw.y8 -y pre_pros.y8 -z final.y8
+     > sudo defect-detect -w 1280 -h 800 -r 60 -f 1 -i input.y8 -x raw.y8 -y pre_pros.y8 -z final.y8
 
    **Note** For file playback, all 3 stage output will be dumped into file. It's must to give option for all 3 output file name.
 
@@ -144,23 +144,31 @@ The examples show the capability of the defect-detect for specific configuration
 
     * Binary File Directory: /opt/xilinx/bin
 
-        | filename    | description |
-        |-------------|-------------|
+        | filename       | description |
+        |----------------|-------------|
         |defect-detect   | main app    |
+
+    * Script File Directory: /opt/xilinx/bin
+
+      | filename                                    | description                                                                       |
+      |---------------------------------------------------------------------------------------------------------------------------------|
+      |`01.mipi-defect-detect-display.sh`           | call defect-detect app to detect the defects and display outputs in normal mode.  |
+      |`02.mipi-defect-detect-display-demo-mode.sh` | call defect-detect app to detect the defects and display outputs in demo mode.    |
 
     * Configuration file directory: /opt/xilinx/share/ivas/defect-detect
 
-        | filename         | description                                  |
-        |------------------|----------------------------------------------|
-        | canny-accelarator.json   |  Config of canny accelarator.
-        | defect-calculation.json  |  Config of defect calculation.
-        | edge-tracer.json         |  Config of edge tracer accelarator.
-        | pre-process.json         |  Config of pre process accelarator.
+        | filename                 | description                                  |
+        |--------------------------|----------------------------------------------|
+        | canny-accelarator.json   |  Config of canny accelarator.                |
+        | defect-calculation.json  |  Config of defect calculation.               |
+        | edge-tracer.json         |  Config of edge tracer accelarator.          |
+        | pre-process.json         |  Config of pre process accelarator.          |
 
      * Jupyter Notebook Directory:  /opt/xilinx/share/notebooks/defect-detect/
 
-       | filename         | description |
-       |------------------|-------------|
-       | defect-detect.ipynb  | Jupyter notebook file for defect detect.|
+       | filename             | description                              |
+       |----------------------|------------------------------------------|
+       | defect-detect.ipynb  | Jupyter notebook file for defect detect  |
+
 
 <p align="center"><sup>Copyright&copy; 2021 Xilinx</sup></p>
