@@ -79,8 +79,9 @@ GMainLoop *loop;
 gboolean fileplayback = FALSE;
 gboolean demo_mode = FALSE;
 static gchar* in_file = NULL;
-static gchar* config_path = "/opt/xilinx/share/ivas/defect-detect/";
-static gchar* media_node = "/dev/media0";
+static gchar* config_path = (char *)"/opt/xilinx/share/ivas/defect-detect/";
+static gchar* media_node = (char *)"/dev/media0";
+static char *msgFirmware = (char *)"Please make sure that the HW accelerator firmware is loaded via xmutil loadapp kv260-defect-detect.\n";
 static gchar* out_file = NULL;
 static gchar* preprocess_file = NULL;
 static gchar* raw_file = NULL;
@@ -691,7 +692,7 @@ main (int argc, char **argv) {
     }
     if (!fileplayback) {
         if (access("/dev/dri/by-path/platform-b0010000.v_mix-card", F_OK) != 0) {
-            g_printerr("ERROR: Mixer device is not ready.\n");
+            g_printerr("ERROR: Mixer device is not ready.\n%s", msgFirmware);
             return 1;
         } else {
             exec("echo | modetest -D B0010000.v_mix -s 52@40:3840x2160@NV16");
