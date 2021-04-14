@@ -95,10 +95,12 @@ Output example:
 
    * For File-In and File-Out playback,  run below command
      > sudo defect-detect -w 1280 -h 800 -r 60 -f 1 -i input.y8 -x raw.y8 -y pre_pros.y8 -z final.y8
+
    **Note** For File-In and File-Out playback, all 3 stage output will be dumped into file. It's must to give option for all 3 output file name.
 
    * For File-In and Display-Out playback,  run below command.
      > sudo 01.file-defect-detect-display.sh ./input_video.y8
+
    **Note** For File-In and Display-Out playback, all 3 stage outputs will be displayed on DP/HDMI. Sample input file path is given, needs to be changed as per the requirement.
 
 #### Command Options:
@@ -146,7 +148,7 @@ The examples show the capability of the defect-detect for specific configuration
     * Script File Directory: /opt/xilinx/bin
 
       | filename                                    | description                                                                       |
-      |---------------------------------------------------------------------------------------------------------------------------------|
+      |---------------------------------------------|-----------------------------------------------------------------------------------|
       |`01.file-defect-detect-display.sh`           | Invoke GStreamer pipeline to detect the defects and display outputs on DP/HDMI.   |
 
     * Configuration file directory: /opt/xilinx/share/ivas/defect-detect
