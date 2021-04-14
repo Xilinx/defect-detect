@@ -92,7 +92,7 @@ guint framerate = 60;
 static GOptionEntry entries[] =
 {
     { "infile",       'i', 0, G_OPTION_ARG_FILENAME, &in_file, "location of GRAY8 file as input", "file path"},
-    { "rawout",       'x', 0, G_OPTION_ARG_FILENAME, &raw_file, "location of GRAY8 file as raw MIPI output", "file path"},
+    { "rawout",       'x', 0, G_OPTION_ARG_FILENAME, &raw_file, "location of GRAY8 file as raw output", "file path"},
     { "preprocessout",'y', 0, G_OPTION_ARG_FILENAME, &preprocess_file, "location of GRAY8 file as pre-processed output", "file path"},
     { "finalout",     'z', 0, G_OPTION_ARG_FILENAME, &out_file, "location of GRAY8 file as final stage output", "file path"},
     { "width",        'w', 0, G_OPTION_ARG_INT, &width, "resolution width of the input", "1280"},

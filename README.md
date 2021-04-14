@@ -66,9 +66,9 @@ If you want to cross compile the source in Linux PC machine, follow these steps,
 # How to run the application:
 
 ## Interacting with the application
-    The application is targeted to run an input source which support GRAY8(Y8) format. Input can be MIPI source or file based.
+    The application is targeted to run only file based input.
 
-    We assume the MIPI or file to support **1280x800 GRAY8(Y8)**
+    We assume input file is to support resolution=1280x800(width=1280 and height=800) and format=GRAY8(Y8)
 
 There are two ways to interact with application, via Jyputer notebook or Command line
 
@@ -93,18 +93,13 @@ Output example:
 #### Examples:
    **Note** Only one instance of the application can run at a time.
 
-   * For normal live playback, run below command
-      > sudo defect-detect -w 1280 -h 800 -r 60 -f 0 -d 0 -m /dev/media0
-
-   * For live playback in demo mode,  run below command
-      > sudo defect-detect -w 1280 -h 800 -r 60 -f 0 -d 1 -m /dev/media0
-
-   **Note** Only the framerate is the key difference b/w demo mode and normal mode. In the demo mode, framerate will be throttled to 4 fps. For the ease of user to read and understand the image/text displayed.
-
-   * For file playback, run below command
+   * For File-In and File-Out playback,  run below command
      > sudo defect-detect -w 1280 -h 800 -r 60 -f 1 -i input.y8 -x raw.y8 -y pre_pros.y8 -z final.y8
+   **Note** For File-In and File-Out playback, all 3 stage output will be dumped into file. It's must to give option for all 3 output file name.
 
-   **Note** For file playback, all 3 stage output will be dumped into file. It's must to give option for all 3 output file name.
+   * For File-In and Display-Out playback,  run below command.
+     > sudo 01.file-defect-detect-display.sh ./input_video.y8
+   **Note** For File-In and Display-Out playback, all 3 stage outputs will be displayed on DP/HDMI. Sample input file path is given, needs to be changed as per the requirement.
 
 #### Command Options:
 
@@ -126,7 +121,7 @@ The examples show the capability of the defect-detect for specific configuration
 
    Application Options:
         -i, --infile=file path            location of GRAY8 file as input
-        -x, --rawout=file path            location of GRAY8 file as raw MIPI output
+        -x, --rawout=file path            location of GRAY8 file as raw output
         -y, --preprocessout=file path     location of GRAY8 file as pre-processed output
         -z, --finalout=file path          location of GRAY8 file as final stage output
         -w, --width=1280                  resolution width of the input
@@ -152,8 +147,7 @@ The examples show the capability of the defect-detect for specific configuration
 
       | filename                                    | description                                                                       |
       |---------------------------------------------------------------------------------------------------------------------------------|
-      |`01.mipi-defect-detect-display.sh`           | call defect-detect app to detect the defects and display outputs in normal mode.  |
-      |`02.mipi-defect-detect-display-demo-mode.sh` | call defect-detect app to detect the defects and display outputs in demo mode.    |
+      |`01.file-defect-detect-display.sh`           | Invoke GStreamer pipeline to detect the defects and display outputs on DP/HDMI.   |
 
     * Configuration file directory: /opt/xilinx/share/ivas/defect-detect
 
