@@ -80,20 +80,19 @@ gboolean fileplayback = FALSE;
 gboolean demo_mode = FALSE;
 static gchar* in_file = NULL;
 static gchar* config_path = (char *)"/opt/xilinx/share/ivas/defect-detect/";
-static gchar* media_node =  (char *)"/dev/media0";
+static gchar* media_node = (char *)"/dev/media0";
+static char *msgFirmware = (char *)"Please make sure that the HW accelerator firmware is loaded via xmutil loadapp kv260-defect-detect.\n";
 static gchar* out_file = NULL;
 static gchar* preprocess_file = NULL;
 static gchar* raw_file = NULL;
 guint width = 1280;
 guint height = 800;
 guint framerate = 60;
-static char *msgFirmware = (char *)"Please make sure that the HW accelerator firmware is loaded via xmutil loadapp kv260-defect-detect.\n";
-
 
 static GOptionEntry entries[] =
 {
     { "infile",       'i', 0, G_OPTION_ARG_FILENAME, &in_file, "location of GRAY8 file as input", "file path"},
-    { "rawout",       'x', 0, G_OPTION_ARG_FILENAME, &raw_file, "location of GRAY8 file as raw MIPI output", "file path"},
+    { "rawout",       'x', 0, G_OPTION_ARG_FILENAME, &raw_file, "location of GRAY8 file as raw output", "file path"},
     { "preprocessout",'y', 0, G_OPTION_ARG_FILENAME, &preprocess_file, "location of GRAY8 file as pre-processed output", "file path"},
     { "finalout",     'z', 0, G_OPTION_ARG_FILENAME, &out_file, "location of GRAY8 file as final stage output", "file path"},
     { "width",        'w', 0, G_OPTION_ARG_INT, &width, "resolution width of the input", "1280"},
