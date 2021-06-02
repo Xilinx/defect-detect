@@ -31,24 +31,24 @@ find_package(OpenCV REQUIRED COMPONENTS opencv_core opencv_video opencv_videoio 
 
 SET(INSTALL_PATH "opt/xilinx")
 
-add_library(ivas_edge_tracer SHARED src/ivas_edge_tracer.c)
-target_include_directories(ivas_edge_tracer PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(ivas_edge_tracer
+add_library(ivas_cca SHARED src/ivas_cca.c)
+target_include_directories(ivas_cca PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_link_libraries(ivas_cca
   jansson ivasutil gstivasinfermeta-1.0)
-install(TARGETS ivas_edge_tracer DESTINATION ${INSTALL_PATH}/lib)
+install(TARGETS ivas_cca DESTINATION ${INSTALL_PATH}/lib)
 
-add_library(ivas_canny_edge SHARED src/ivas_canny_edge.c)
-target_include_directories(ivas_canny_edge PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(ivas_canny_edge
+add_library(ivas_otsu SHARED src/ivas_otsu.c)
+target_include_directories(ivas_otsu PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_link_libraries(ivas_otsu
   jansson ivasutil gstivasinfermeta-1.0)
-install(TARGETS ivas_canny_edge DESTINATION ${INSTALL_PATH}/lib)
+install(TARGETS ivas_otsu DESTINATION ${INSTALL_PATH}/lib)
 
-add_library(ivas_defectcalc SHARED src/ivas_defectcalc.cpp src/ivas_defectcalc.hpp)
-target_include_directories(ivas_defectcalc PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(ivas_defectcalc
+add_library(ivas_text2overlay SHARED src/ivas_text2overlay.cpp src/ivas_text2overlay.hpp)
+target_include_directories(ivas_text2overlay PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_link_libraries(ivas_text2overlay
   gstreamer-1.0 gstbase-1.0 gobject-2.0 glib-2.0 gstvideo-1.0 gstallocators-1.0
   gstivasinfermeta-1.0 jansson ivasutil ${OpenCV_LIBS} glog)
-install(TARGETS ivas_defectcalc DESTINATION ${INSTALL_PATH}/lib)
+install(TARGETS ivas_text2overlay DESTINATION ${INSTALL_PATH}/lib)
 
 add_library(ivas_preprocess SHARED src/ivas_preprocess.c)
 target_include_directories(ivas_preprocess PRIVATE ${GSTREAMER_INCLUDE_DIRS})
@@ -73,10 +73,10 @@ install(PROGRAMS
     DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES
-    config/canny-accelarator.json
-    config/defect-calculation.json
-    config/edge-tracer.json
-    config/pre-process.json
+    config/otsu-accelarator.json
+    config/text2overlay.json
+    config/cca-accelarator.json
+    config/preprocess-accelarator.json
     DESTINATION ${INSTALL_PATH}/share/ivas/defect-detect)
 
 install(DIRECTORY

@@ -4,8 +4,8 @@
   "element-mode": "transform",
   "kernels": [
     {
-      "kernel-name": "edgetracing_accel:edgetracing_accel_1",
-      "library-name": "libivas_edge_tracer.so",
+      "kernel-name": "cca_custom_accel:cca_custom_accel_1",
+      "library-name": "libivas_cca.so",
       "config": {
         "debug_level" : 1
       }

@@ -22,7 +22,7 @@
 #include <math.h>
 #include <ivas/ivas_kernel.h>
 #include <gst/ivas/gstinferencemeta.h>
-#include "ivas_defectcalc.hpp"
+#include "ivas_text2overlay.hpp"
 
 
 int log_level;
@@ -140,55 +140,40 @@ extern "C"
     ivas_xoverlaypriv *kpriv = (ivas_xoverlaypriv *) handle->kernel_priv;
     struct overlayframe_info *frameinfo = &(kpriv->frameinfo);
     frameinfo->inframe = input[0];
-    frameinfo->outframe = output[0];
+    //frameinfo->outframe = output[0];
 
     char *lumaBuf = (char *) frameinfo->inframe->vaddr[0];
     char *lumaOutBuf = (char *) frameinfo->outframe->vaddr[0];
-    vector<vector<cv::Point>> contours;
 
     frameinfo->lumaImg.create (input[0]->props.height, input[0]->props.stride, CV_8U);
     frameinfo->lumaImg.data = (unsigned char *) lumaBuf;
-    frameinfo->lumaOutImg.create (input[0]->props.height, input[0]->props.stride, CV_8U);
-    frameinfo->lumaOutImg.data = (unsigned char *) lumaOutBuf;
+    //frameinfo->lumaOutImg.create (input[0]->props.height, input[0]->props.stride, CV_8U);
+    //frameinfo->lumaOutImg.data = (unsigned char *) lumaOutBuf;
+    GstInferenceMeta *infer_meta = ((GstInferenceMeta *)gst_buffer_get_meta((GstBuffer *)
+                                                                frameinfo->inframe->app_priv,
+                                                                gst_inference_meta_api_get_type()));
+    if (infer_meta == NULL)
+    {
+        LOG_MESSAGE(LOG_LEVEL_INFO, "ivas meta data is not available for crop");
+        return FALSE;
+    }
+    uint32_t *mango_pixel, *defect_pixel;
+    GstInferencePrediction *root = infer_meta->prediction;
+    /* Iterate through the immediate child predictions */
+    GSList *tmp = gst_inference_prediction_get_children(root);
+    for (GSList *child_predictions = tmp;
+           child_predictions;
+           child_predictions = g_slist_next(child_predictions))
+    {
+        GstInferencePrediction *child = (GstInferencePrediction *)child_predictions->data;
+        mango_pixel = (uint32_t *)child->reserved_1;
+        defect_pixel = (uint32_t *)child->reserved_2;
+    }
 
-    cv::findContours(frameinfo->lumaImg, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-    long unsigned int i = 0, mango_contour_pos = 0, temp_contour_pos = 0;
-    double mango_contour_area = 0, contour_area  = 0, total_contour_area = 0;
-    double temp_contour_area = 0;
-
-    for(i = 0; i < contours.size(); i++ ) {
-      contour_area = cv::contourArea(contours[i]);
-      if (mango_contour_area < contour_area) {
-         mango_contour_pos = i;
-         mango_contour_area = contour_area;
-      } else if (temp_contour_area < contour_area){
-         temp_contour_pos = i;
-         temp_contour_area = contour_area;
-      }
-      total_contour_area += contour_area;
-    }
-    /* largest contour and 2nd largest contour will be almost same size and
-    *  it belongs to same. Below logic is to check if it matches then ignore
-    *  2nd largest contour into the calculation.
-    */
-    if (temp_contour_area > (95 * mango_contour_area)/100) {
-      total_contour_area -= temp_contour_area;
-      temp_contour_area = 0;
-    } else {
-      temp_contour_pos = mango_contour_pos;
-    }
-    frameinfo->lumaOutImg = cv::Mat::zeros(frameinfo->lumaOutImg.size(), CV_8U);
-    for(i = 0; i < contours.size(); i++ ) {
-      if (i == mango_contour_pos || i == temp_contour_pos)
-        continue;
-      drawContours(frameinfo->lumaOutImg, contours, i, 255, cv::FILLED);
-    }
-    double defect_pixels = cv::countNonZero(frameinfo->lumaOutImg);
-    double total_pixel = input[0]->props.height * input[0]->props.stride;
-    double defect_density = (defect_pixels / total_pixel) * 100.0;
+    double defect_density = ((double)*defect_pixel / *mango_pixel) * 100.0;
     bool defect_decision = (defect_density > kpriv->defect_threshold);
 
-    char text_buffer[512];
+    char text_buffer[512] = {0,};
     int y_point = kpriv->y_offset;
     if (defect_decision) {
       kpriv->total_defect++;
@@ -197,22 +182,25 @@ extern "C"
 
     LOG_MESSAGE (LOG_LEVEL_DEBUG, "Defect Density: %.2lf %%", defect_density);
     sprintf(text_buffer, "Defect Density: %.2lf %%", defect_density);
+    printf ("Defect Density: %.2lf %%\t", defect_density);
     /* Draw label text on the filled rectanngle */
-    putText(frameinfo->lumaOutImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
+    putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
             Scalar (255.0, 255.0, 255.0), 1, 1);
     y_point += 30;
 
     LOG_MESSAGE (LOG_LEVEL_DEBUG, "Is Defected: %s", defect_decision ? "Yes": "No");
     sprintf(text_buffer, "Is Defected: %s", defect_decision ? "Yes": "No");
+    printf("Is Defected: %s\n", defect_decision ? "Yes": "No");
     /* Draw label text on the filled rectanngle */
-    putText(frameinfo->lumaOutImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
+    putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
             Scalar (255.0, 255.0, 255.0), 1, 1);
     y_point += 30;
+
     if (kpriv->is_acc_result) {
       LOG_MESSAGE (LOG_LEVEL_DEBUG, "Accumulated Defects: %u", kpriv->total_defect);
       sprintf(text_buffer, "Accumulated defects: %u", kpriv->total_defect);
       /* Draw label text on the filled rectanngle */
-      putText(frameinfo->lumaOutImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
+      putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
               Scalar (255.0, 255.0, 255.0), 1, 1);
       y_point += 30;
     }

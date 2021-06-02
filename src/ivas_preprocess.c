@@ -25,6 +25,7 @@
 
 #define DEFAULT_THRESHOLD	60
 #define DEFAULT_MAX_VALUE	255
+#define NORMALIZE_THRESHOLD 13
 
 typedef struct _kern_priv
 {
@@ -65,13 +66,6 @@ int32_t xlnx_kernel_init(IVASKernel *handle)
 	    kernel_priv->log_level = json_integer_value (val);
     LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "IVAS PPE: debug_level %d", kernel_priv->log_level);
 
-    val = json_object_get (jconfig, "threshold");
-    if (!val || !json_is_integer (val))
-	    kernel_priv->threshold = DEFAULT_THRESHOLD;
-    else
-	    kernel_priv->threshold = json_integer_value (val);
-    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "IVAS PPE: threshold %d", kernel_priv->threshold);
-
     val = json_object_get (jconfig, "max_value");
     if (!val || !json_is_integer (val))
 	    kernel_priv->max_value = DEFAULT_MAX_VALUE;
@@ -87,27 +81,48 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
 {
     PreProcessingKernelPriv *kernel_priv;
     int ret;
-
+    uint32_t *thr;
+    IVASFrame *inframe = input[0];
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
 
     ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x10);       /* Input buffer */
     ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x38);   /* In Y8 rows */
     ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t), 0x40);    /* In Y8 columns */
-    ivas_register_write(handle, &(kernel_priv->threshold), sizeof(uint32_t), 0x28);   /* In threashold */
     ivas_register_write(handle, &(kernel_priv->max_value), sizeof(uint32_t), 0x30);   /* In Y8 height */
     ivas_register_write(handle, &(output[0]->paddr[0]), sizeof(uint64_t), 0x1C);      /* Output buffer */
 
+    GstInferenceMeta *infer_meta = ((GstInferenceMeta *)gst_buffer_get_meta((GstBuffer *)
+                                                                inframe->app_priv,
+                                                            gst_inference_meta_api_get_type()));
+    if (infer_meta == NULL)
+    {
+        LOG_MESSAGE(LOG_LEVEL_INFO, kernel_priv->log_level, "ivas meta data is not available for crop");
+        return FALSE;
+    }
+    GstInferencePrediction *root = infer_meta->prediction;
+    /* Iterate through the immediate child predictions */
+    GSList *tmp = gst_inference_prediction_get_children(root);
+    for (GSList *child_predictions = tmp;
+           child_predictions;
+           child_predictions = g_slist_next(child_predictions))
+    {
+        GstInferencePrediction *child = (GstInferencePrediction *)child_predictions->data;
+
+        thr = (uint32_t *)child->reserved_1;
+    }
+    kernel_priv->threshold = *thr - NORMALIZE_THRESHOLD;
+    ivas_register_write(handle, &(kernel_priv->threshold), sizeof(uint32_t), 0x28);   /* In threashold */
     ret = ivas_kernel_start (handle);
     if (ret < 0) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to issue execute command");
-        return 0;
+        return FALSE;
     }
 
     /* wait for kernel completion */
     ret = ivas_kernel_done (handle, 1000);
     if (ret < 0) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to receive response from kernel");
-        return 0;
+        return FALSE;
     }
     return TRUE;
 }

@@ -4,12 +4,10 @@
   "element-mode": "transform",
   "kernels": [
     {
-      "kernel-name": "canny_accel:canny_accel_1",
-      "library-name": "libivas_canny_edge.so",
+      "kernel-name": "gaussian_otsu_accel:gaussian_otsu_accel_1",
+      "library-name": "libivas_otsu.so",
       "config": {
-        "debug_level" : 1,
-        "thr1": 35,
-        "thr2": 255
+        "debug_level" : 1
       }
     }
   ]
