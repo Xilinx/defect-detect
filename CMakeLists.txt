@@ -43,7 +43,7 @@ target_link_libraries(ivas_otsu
   jansson ivasutil gstivasinfermeta-1.0)
 install(TARGETS ivas_otsu DESTINATION ${INSTALL_PATH}/lib)
 
-add_library(ivas_text2overlay SHARED src/ivas_text2overlay.cpp src/ivas_text2overlay.hpp)
+add_library(ivas_text2overlay SHARED src/ivas_text2overlay.cpp)
 target_include_directories(ivas_text2overlay PRIVATE ${GSTREAMER_INCLUDE_DIRS})
 target_link_libraries(ivas_text2overlay
   gstreamer-1.0 gstbase-1.0 gobject-2.0 glib-2.0 gstvideo-1.0 gstallocators-1.0
@@ -69,7 +69,6 @@ install(FILES
     )
 
 install(PROGRAMS
-    script/01.file-defect-detect-display.sh
     DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES

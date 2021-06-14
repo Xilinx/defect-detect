@@ -19,17 +19,45 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <iostream>
-#include <math.h>
 #include <ivas/ivas_kernel.h>
 #include <gst/ivas/gstinferencemeta.h>
-#include "ivas_text2overlay.hpp"
 
 
 int log_level;
 using namespace cv;
 using namespace std;
 
-#define DEFAULT_DEFECT_THRESHOLD  0.08
+#define DEFAULT_DEFECT_THRESHOLD  0.16
+
+
+enum
+{
+  LOG_LEVEL_ERROR,
+  LOG_LEVEL_WARNING,
+  LOG_LEVEL_INFO,
+  LOG_LEVEL_DEBUG
+};
+
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define LOG_MESSAGE(level, ...) {\
+  do {\
+    char *str; \
+    if (level == LOG_LEVEL_ERROR)\
+      str = (char*)"ERROR";\
+    else if (level == LOG_LEVEL_WARNING)\
+      str = (char*)"WARNING";\
+    else if (level == LOG_LEVEL_INFO)\
+      str = (char*)"INFO";\
+    else if (level == LOG_LEVEL_DEBUG)\
+      str = (char*)"DEBUG";\
+    if (level <= log_level) {\
+      printf("[%s %s:%d] %s: ",__FILENAME__, __func__, __LINE__, str);\
+      printf(__VA_ARGS__);\
+      printf("\n");\
+    }\
+  } while (0); \
+}
+
 
 struct overlayframe_info
 {

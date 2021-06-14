@@ -21,15 +21,10 @@
 
 #include <stdlib.h>
 #include <math.h>
-#include <glib.h>
 #include <gst/gst.h>
-#include <stdio.h>
 #include <gst/video/videooverlay.h>
-#include <string>
 #include <string.h>
 #include <unistd.h>
-#include <set>
-#include <sstream>
 #include <memory>
 #include <stdexcept>
 
@@ -38,10 +33,10 @@ using namespace std;
 GST_DEBUG_CATEGORY (defectdetect_app);
 #define GST_CAT_DEFAULT defectdetect_app
 
-#define PRE_PROCESS_JSON_FILE        "pre-process.json"
-#define CANNY_ACC_JSON_FILE          "canny-accelarator.json"
-#define EDGE_TRACER_JSON_FILE        "edge-tracer.json"
-#define DEFECT_CALC_JSON_FILE        "defect-calculation.json"
+#define PRE_PROCESS_JSON_FILE        "preprocess-accelarator.json"
+#define OTSU_ACC_JSON_FILE           "otsu-accelarator.json"
+#define CCA_ACC_JSON_FILE            "cca-accelarator.json"
+#define TEXT_2_OVERLAY_JSON_FILE     "text2overlay.json"
 #define DRM_BUS_ID                   "B0010000.v_mix"
 #define CAPTURE_FORMAT_Y8            "GRAY8"
 #define MAX_WIDTH                    1280
@@ -65,56 +60,57 @@ typedef enum {
 typedef struct _AppData {
     GstElement *pipeline, *capsfilter, *src;
     GstElement *sink_raw, *sink_preprocess, *sink_display;
-    GstElement *tee_raw, *tee_preprocess;
+    GstElement *tee_raw, *tee_preprocess, *tee_display;
     GstElement *queue_raw, *queue_raw2, *queue_preprocess, *queue_preprocess2;
     GstElement *perf_raw, *perf_preprocess, *perf_display;
     GstElement *videorate_raw, *videorate_preprocess, *videorate_display;
-    GstElement *preprocess, *canny, *edge_tracer, *defect_calculator;
+    GstElement *preprocess, *otsu, *cca, *text2overlay;
     GstElement *capsfilter_raw, *capsfilter_preprocess, *capsfilter_display;
     GstPad *pad_raw, *pad_raw2, *pad_preprocess, *pad_preprocess2;
     GstVideoOverlay  *overlay_raw, *overlay_preprocess, *overlay_display;
 } AppData;
 
 GMainLoop *loop;
-gboolean fileplayback = FALSE;
+gboolean file_playback = FALSE;
+gboolean file_dump = FALSE;
 gboolean demo_mode = FALSE;
 static gchar* in_file = NULL;
-static gchar* config_path = (char *)"/opt/xilinx/share/ivas/defect-detect/";
-static gchar* media_node = (char *)"/dev/media0";
-static char *msgFirmware = (char *)"Please make sure that the HW accelerator firmware is loaded via xmutil loadapp kv260-defect-detect.\n";
-static gchar* out_file = NULL;
-static gchar* preprocess_file = NULL;
-static gchar* raw_file = NULL;
+static gchar* config_path  = (gchar *)"/opt/xilinx/share/ivas/defect-detect/";
+static gchar* media_node   = (gchar *)"/dev/media0";
+static gchar *msg_firmware = (gchar *)"Load the HW accelerator firmware first. Use command: xmutil loadapp kv260-defect-detect\n";
+static gchar* final_out = NULL;
+static gchar* preprocess_out = NULL;
+static gchar* raw_out = NULL;
 guint width = 1280;
 guint height = 800;
 guint framerate = 60;
 
 static GOptionEntry entries[] =
 {
-    { "infile",       'i', 0, G_OPTION_ARG_FILENAME, &in_file, "location of GRAY8 file as input", "file path"},
-    { "rawout",       'x', 0, G_OPTION_ARG_FILENAME, &raw_file, "location of GRAY8 file as raw output", "file path"},
-    { "preprocessout",'y', 0, G_OPTION_ARG_FILENAME, &preprocess_file, "location of GRAY8 file as pre-processed output", "file path"},
-    { "finalout",     'z', 0, G_OPTION_ARG_FILENAME, &out_file, "location of GRAY8 file as final stage output", "file path"},
+    { "infile",       'i', 0, G_OPTION_ARG_FILENAME, &in_file, "location of input file", "file path"},
+    { "rawout",       'x', 0, G_OPTION_ARG_FILENAME, &raw_out, "location of capture raw output file", "file path"},
+    { "preprocessout",'y', 0, G_OPTION_ARG_FILENAME, &preprocess_out, "location of pre-processed output file", "file path"},
+    { "finalout",     'z', 0, G_OPTION_ARG_FILENAME, &final_out, "location of final output file", "file path"},
     { "width",        'w', 0, G_OPTION_ARG_INT, &width, "resolution width of the input", "1280"},
     { "height",       'h', 0, G_OPTION_ARG_INT, &height, "resolution height of the input", "800"},
     { "framerate",    'r', 0, G_OPTION_ARG_INT, &framerate, "framerate of the input source", "60"},
-    { "inputtype",    'f', 0, G_OPTION_ARG_INT, &fileplayback, "For live playback value must be 0 otherwise 1, default is 0", NULL},
-    { "demomode",     'd', 0, G_OPTION_ARG_INT, &demo_mode, "For demo mode value must be 1 otherwise 0, default is 0", NULL},
-    { "mediatype",    'm', 0, G_OPTION_ARG_STRING, &media_node, "Media node should be provided in live use case, default is /dev/media0", NULL},
-    { "cfgpath",      'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON file path", "config path"},
+    { "inputtype",    'f', 0, G_OPTION_ARG_INT, &file_playback, "For file input value must be 1, otherwise 0, default is 0", NULL},
+    { "demomode",     'd', 0, G_OPTION_ARG_INT, &demo_mode, "For Demo mode value must be 1, otherwise 0, default is 0", NULL},
+    { "medianode",    'm', 0, G_OPTION_ARG_STRING, &media_node, "Media node for the live use case, default is /dev/media0", NULL},
+    { "cfgpath",      'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON config file path", "config file path"},
     { NULL }
 };
 
 /* Handler for the pad-added signal */
 static void pad_added_cb (GstElement *src, GstPad *pad, AppData *data);
 
-DD_ERROR_LOG set_pipeline_config (AppData *data, gboolean fileplayback);
+DD_ERROR_LOG set_pipeline_config (AppData *data);
 
 const gchar * error_to_string (gint error_code);
 
-DD_ERROR_LOG create_pipeline (AppData *data, gboolean fileplayback);
+DD_ERROR_LOG create_pipeline (AppData *data);
 
-DD_ERROR_LOG link_pipeline (AppData *data, gboolean fileplayback);
+DD_ERROR_LOG link_pipeline (AppData *data);
 
 void
 signal_handler (gint sig) {
@@ -233,32 +229,31 @@ error_to_string (gint error_code) {
  *  same.
  *
  *  @param data is the application structure.
- *  @param fileplayback is the boolean param is to set the
- *  pipeline accordingly.
  *  @return Error code.
  */
 DD_ERROR_LOG
-set_pipeline_config (AppData *data, gboolean fileplayback) {
+set_pipeline_config (AppData *data) {
     gint block_size;
     GstCaps *caps;
     string config_file(config_path);
     gint ret = DD_SUCCESS;
     guint plane_id = BASE_PLANE_ID;
-    if (fileplayback) {
+    if (file_playback) {
         block_size = width * height;
         g_object_set(G_OBJECT(data->src),            "location",  in_file,         NULL);
         g_object_set(G_OBJECT(data->src),            "blocksize", block_size,      NULL);
-        g_object_set(G_OBJECT(data->sink_display),   "location",  out_file,        NULL);
-        g_object_set(G_OBJECT(data->sink_raw),       "location",  raw_file,        NULL);
-        g_object_set(G_OBJECT(data->sink_preprocess),"location",  preprocess_file, NULL);
     } else {
         g_object_set(G_OBJECT(data->queue_raw),         "max-size-buffers", 1,  NULL);
         g_object_set(G_OBJECT(data->queue_raw2),        "max-size-buffers", 1,  NULL);
         g_object_set(G_OBJECT(data->queue_preprocess),  "max-size-buffers", 1,  NULL);
         g_object_set(G_OBJECT(data->queue_preprocess2), "max-size-buffers", 1,  NULL);
-
         g_object_set(G_OBJECT(data->src),               "media-device", media_node,  NULL);
-
+    }
+    if (file_dump) {
+        g_object_set(G_OBJECT(data->sink_raw),       "location",  raw_out,        NULL);
+        g_object_set(G_OBJECT(data->sink_preprocess),"location",  preprocess_out, NULL);
+        g_object_set(G_OBJECT(data->sink_display),   "location",  final_out,        NULL);
+    } else {
         g_object_set(G_OBJECT(data->sink_raw),          "bus-id",       DRM_BUS_ID,  NULL);
         g_object_set(G_OBJECT(data->sink_raw),          "plane-id",     plane_id++,  NULL);
         g_object_set(G_OBJECT(data->sink_raw),          "async",        FALSE,       NULL);
@@ -342,18 +337,18 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
     GST_DEBUG ("Config file path is %s", config_file.c_str());
 
     config_file.erase (config_file.begin()+ strlen(config_path), config_file.end()-0);
-    config_file.append(CANNY_ACC_JSON_FILE);
-    g_object_set (G_OBJECT(data->canny),   "kernels-config", config_file.c_str(), NULL);
+    config_file.append(OTSU_ACC_JSON_FILE);
+    g_object_set (G_OBJECT(data->otsu),   "kernels-config", config_file.c_str(), NULL);
     GST_DEBUG ("Config file path is %s", config_file.c_str());
 
     config_file.erase (config_file.begin()+ strlen(config_path), config_file.end()-0);
-    config_file.append(EDGE_TRACER_JSON_FILE);
-    g_object_set (G_OBJECT(data->edge_tracer),    "kernels-config", config_file.c_str(), NULL);
+    config_file.append(CCA_ACC_JSON_FILE);
+    g_object_set (G_OBJECT(data->cca),    "kernels-config", config_file.c_str(), NULL);
     GST_DEBUG ("Config file path is %s", config_file.c_str());
 
     config_file.erase (config_file.begin()+ strlen(config_path), config_file.end()-0);
-    config_file.append(DEFECT_CALC_JSON_FILE);
-    g_object_set (G_OBJECT(data->defect_calculator), "kernels-config", config_file.c_str(), NULL);
+    config_file.append(TEXT_2_OVERLAY_JSON_FILE);
+    g_object_set (G_OBJECT(data->text2overlay), "kernels-config", config_file.c_str(), NULL);
     GST_DEBUG ("Config file path is %s", config_file.c_str());
     return DD_SUCCESS;
 }
@@ -365,173 +360,111 @@ set_pipeline_config (AppData *data, gboolean fileplayback) {
  *  Link live playback pipeline.
  *
  *  @param data is the application structure pointer.
- *  @param fileplayback is a boolean data to tell whether it's
- *  file playback or live.
  *  @return Error code.
  */
 DD_ERROR_LOG
-link_pipeline (AppData *data, gboolean fileplayback) {
-    if (!fileplayback) {
-        gchar *name1, *name2;
-        gint ret = DD_SUCCESS;
-        data->pad_raw = gst_element_get_request_pad(data->tee_raw, "src_1");
-        name1 = gst_pad_get_name(data->pad_raw);
-        data->pad_raw2 = gst_element_get_request_pad(data->tee_raw, "src_2");
-        name2 = gst_pad_get_name(data->pad_raw2);
-
+link_pipeline (AppData *data) {
+    gchar *name1, *name2;
+    gint ret = DD_SUCCESS;
+    data->pad_raw = gst_element_get_request_pad(data->tee_raw, "src_1");
+    name1 = gst_pad_get_name(data->pad_raw);
+    data->pad_raw2 = gst_element_get_request_pad(data->tee_raw, "src_2");
+    name2 = gst_pad_get_name(data->pad_raw2);
+    if (!file_playback) {
         if (!gst_element_link_many(data->capsfilter, data->tee_raw, NULL)) {
             GST_ERROR ("Error linking for capsfilter --> tee");
             return DD_ERROR_PIPELINE_LINKING_FAIL;
         }
         GST_DEBUG ("Linked for capsfilter --> tee successfully");
-        if (!gst_element_link_pads(data->tee_raw, name1, data->queue_raw, "sink")) {
-            GST_ERROR ("Error linking for tee --> queue_raw");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for tee --> queue_raw successfully");
-        if (!gst_element_link_pads(data->tee_raw, name2, data->queue_raw2, "sink")) {
-            GST_ERROR ("Error linking for tee --> queue_raw2");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for tee --> queue_raw2 successfully");
-        if (name1) g_free (name1);
-        if (name2) g_free (name2);
-        if (demo_mode) {
-            if (!gst_element_link_many(data->queue_raw, data->videorate_raw, data->capsfilter_raw, \
-                                       data->perf_raw, data->sink_raw, NULL)) {
-                GST_ERROR ("Error linking for queue --> videorate --> capfilter --> perf --> sink");
-                return DD_ERROR_PIPELINE_LINKING_FAIL;
-            }
-            GST_DEBUG ("Linking for queue --> videorate --> capfilter --> perf --> sink successfully");
-        } else {
-            if (!gst_element_link_many(data->queue_raw, data->perf_raw, data->sink_raw, NULL)) {
-                GST_ERROR ("Error linking for queue_raw --> perf_raw --> sink_raw");
-                return DD_ERROR_PIPELINE_LINKING_FAIL;
-            }
-            GST_DEBUG ("Linking for queue_raw --> perf_raw --> sink_raw successfully");
-        }
-        if (!gst_element_link_many(data->queue_raw2, data->preprocess, data->tee_preprocess, NULL)) {
-            GST_ERROR ("Error linking for queue_raw2 --> preprocess --> canny --> edge_tracer --> tee_preprocess");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for queue_raw2 --> preprocess --> canny --> edge_tracer --> tee_preprocess successfully");
-        data->pad_preprocess = gst_element_get_request_pad(data->tee_preprocess, "src_1");
-        name1 = gst_pad_get_name(data->pad_preprocess);
-        data->pad_preprocess2 = gst_element_get_request_pad(data->tee_preprocess, "src_2");
-        name2 = gst_pad_get_name(data->pad_preprocess2);
-
-        if (!gst_element_link_pads(data->tee_preprocess, name1, data->queue_preprocess, "sink")) {
-            GST_ERROR ("Error linking for tee_preprocess --> queue_preprocess");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for tee_preprocess --> queue_preprocess successfully");
-        if (!gst_element_link_pads(data->tee_preprocess, name2, data->queue_preprocess2, "sink")) {
-            GST_ERROR ("Error linking for tee_preprocess --> queue_preprocess2");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for tee_preprocess --> queue_preprocess2 successfully");
-
-        if (name1) g_free (name1);
-        if (name2) g_free (name2);
-        if (demo_mode) {
-            if (!gst_element_link_many(data->queue_preprocess, data->videorate_preprocess, data->capsfilter_preprocess, \
-                                       data->perf_preprocess, data->sink_preprocess, NULL)) {
-                GST_ERROR ("Error linking for queue --> videorate --> capsfilter --> perf --> sink");
-                return DD_ERROR_PIPELINE_LINKING_FAIL;
-            }
-            GST_DEBUG ("Linking for queue --> videorate --> capsfilter --> perf --> sink successfully");
-        } else {
-            if (!gst_element_link_many(data->queue_preprocess, data->perf_preprocess, data->sink_preprocess, NULL)) {
-                GST_ERROR ("Error linking for queue_preprocess --> perf_preprocess --> sink_preprocess");
-                return DD_ERROR_PIPELINE_LINKING_FAIL;
-            }
-            GST_DEBUG ("Linking for queue_preprocess --> perf_preprocess --> sink_preprocess successfully");
-        }
-        if (demo_mode) {
-            if (!gst_element_link_many(data->queue_preprocess2, data->canny, data->edge_tracer, data->defect_calculator, \
-                                       data->videorate_display, data->capsfilter_display, data->perf_display, \
-                                       data->sink_display, NULL)) {
-                GST_ERROR ("Error linking for queue --> canny --> edge_tracer --> defect_calc --> videorate --> capsfilter \
-                            --> perf --> sink");
-                return DD_ERROR_PIPELINE_LINKING_FAIL;
-            }
-            GST_DEBUG ("Linking for queue --> canny --> edge_tracer --> defect_calc --> videorate  --> capsfilter --> \
-                        perf --> sink  successfully");
-        } else {
-            if (!gst_element_link_many(data->queue_preprocess2, data->canny, data->edge_tracer, data->defect_calculator, \
-                                       data->perf_display, data->sink_display, NULL)) {
-                GST_ERROR ("Error linking for queue_preprocess2 --> canny --> edge_tracer --> defect_calculator --> perf --> sink");
-                return DD_ERROR_PIPELINE_LINKING_FAIL;
-            }
-            GST_DEBUG ("Linking for queue_raw2 --> canny --> edge_tracer --> defect_calculator --> perf --> sink successfully");
-        }
-
     } else {
-        gchar *name1, *name2;
-        gint ret = DD_SUCCESS;
-        data->pad_raw = gst_element_get_request_pad(data->tee_raw, "src_1");
-        name1 = gst_pad_get_name(data->pad_raw);
-        data->pad_raw2 = gst_element_get_request_pad(data->tee_raw, "src_2");
-        name2 = gst_pad_get_name(data->pad_raw2);
-
         if (!gst_element_link_many(data->src, data->capsfilter, data->tee_raw, NULL)) {
             GST_ERROR ("Error linking for src --> capsfilter --> tee");
             return DD_ERROR_PIPELINE_LINKING_FAIL;
         }
         GST_DEBUG ("Linked for src --> capsfilter --> tee successfully");
-        if (!gst_element_link_pads(data->tee_raw, name1, data->queue_raw, "sink")) {
-            GST_ERROR ("Error linking for tee --> queue_raw");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for tee --> queue_raw successfully");
-        if (!gst_element_link_pads(data->tee_raw, name2, data->queue_raw2, "sink")) {
-            GST_ERROR ("Error linking for tee --> queue_raw2");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for tee --> queue_raw2 successfully");
-        if (name1) g_free (name1);
-        if (name2) g_free (name2);
-        if (!gst_element_link_many(data->queue_raw, data->sink_raw, NULL)) {
-            GST_ERROR ("Error linking for queue_raw --> sink_raw");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for queue_raw --> sink_raw successfully");
-        if (!gst_element_link_many(data->queue_raw2, data->preprocess, data->tee_preprocess, NULL)) {
-            GST_ERROR ("Error linking for queue_raw2 --> preprocess --> canny --> edge_tracer --> tee_preprocess");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for queue_raw2 --> preprocess --> canny --> edge_tracer --> tee_preprocess successfully");
-        data->pad_preprocess = gst_element_get_request_pad(data->tee_preprocess, "src_1");
-        name1 = gst_pad_get_name(data->pad_preprocess);
-        data->pad_preprocess2 = gst_element_get_request_pad(data->tee_preprocess, "src_2");
-        name2 = gst_pad_get_name(data->pad_preprocess2);
-
-        if (!gst_element_link_pads(data->tee_preprocess, name1, data->queue_preprocess, "sink")) {
-            GST_ERROR ("Error linking for tee_preprocess --> queue_preprocess");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for tee_preprocess --> queue_preprocess successfully");
-        if (!gst_element_link_pads(data->tee_preprocess, name2, data->queue_preprocess2, "sink")) {
-            GST_ERROR ("Error linking for tee_preprocess --> queue_preprocess2");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for tee_preprocess --> queue_preprocess2 successfully");
-
-        if (name1) g_free (name1);
-        if (name2) g_free (name2);
-        if (!gst_element_link_many(data->queue_preprocess, data->sink_preprocess, NULL)) {
-            GST_ERROR ("Error linking for queue_preprocess --> sink_preprocess");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for queue_preprocess --> sink_preprocess successfully");
-        if (!gst_element_link_many(data->queue_preprocess2, data->canny, data->edge_tracer, data->defect_calculator, \
-                                   data->sink_display, NULL)) {
-            GST_ERROR ("Error linking for queue_raw2 --> canny --> edge_tracer --> defect_calculator --> sink");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
-        }
-        GST_DEBUG ("Linking for queue_raw2 --> canny --> edge_tracer --> defect_calculator --> sink successfully");
-
     }
+    if (!gst_element_link_pads(data->tee_raw, name1, data->queue_raw, "sink")) {
+        GST_ERROR ("Error linking for tee --> queue_raw");
+        return DD_ERROR_PIPELINE_LINKING_FAIL;
+    }
+    GST_DEBUG ("Linking for tee --> queue_raw successfully");
+    if (!gst_element_link_pads(data->tee_raw, name2, data->queue_raw2, "sink")) {
+        GST_ERROR ("Error linking for tee --> queue_raw2");
+        return DD_ERROR_PIPELINE_LINKING_FAIL;
+    }
+    GST_DEBUG ("Linking for tee --> queue_raw2 successfully");
+    if (name1) g_free (name1);
+    if (name2) g_free (name2);
+    if (demo_mode) {
+        if (!gst_element_link_many(data->queue_raw, data->videorate_raw, data->capsfilter_raw, \
+                                   data->perf_raw, data->sink_raw, NULL)) {
+            GST_ERROR ("Error linking for queue --> videorate --> capfilter --> perf --> sink");
+            return DD_ERROR_PIPELINE_LINKING_FAIL;
+        }
+        GST_DEBUG ("Linking for queue --> videorate --> capfilter --> perf --> sink successfully");
+    } else {
+        if (!gst_element_link_many(data->queue_raw, data->perf_raw, data->sink_raw, NULL)) {
+            GST_ERROR ("Error linking for queue_raw --> perf_raw --> sink_raw");
+            return DD_ERROR_PIPELINE_LINKING_FAIL;
+        }
+        GST_DEBUG ("Linking for queue_raw --> perf_raw --> sink_raw successfully");
+    }
+    if (!gst_element_link_many(data->queue_raw2, data->otsu, data->preprocess, data->tee_preprocess, NULL)) {
+        GST_ERROR ("Error linking for queue_raw2 --> otsu --> preprocess --> tee_preprocess");
+        return DD_ERROR_PIPELINE_LINKING_FAIL;
+    }
+    GST_DEBUG ("Linking for queue_raw2 --> otsu --> preprocess --> tee_preprocess successfully");
+    data->pad_preprocess = gst_element_get_request_pad(data->tee_preprocess, "src_1");
+    name1 = gst_pad_get_name(data->pad_preprocess);
+    data->pad_preprocess2 = gst_element_get_request_pad(data->tee_preprocess, "src_2");
+    name2 = gst_pad_get_name(data->pad_preprocess2);
+
+    if (!gst_element_link_pads(data->tee_preprocess, name1, data->queue_preprocess, "sink")) {
+        GST_ERROR ("Error linking for tee_preprocess --> queue_preprocess");
+        return DD_ERROR_PIPELINE_LINKING_FAIL;
+    }
+    GST_DEBUG ("Linking for tee_preprocess --> queue_preprocess successfully");
+    if (!gst_element_link_pads(data->tee_preprocess, name2, data->queue_preprocess2, "sink")) {
+        GST_ERROR ("Error linking for tee_preprocess --> queue_preprocess2");
+        return DD_ERROR_PIPELINE_LINKING_FAIL;
+    }
+    GST_DEBUG ("Linking for tee_preprocess --> queue_preprocess2 successfully");
+
+    if (name1) g_free (name1);
+    if (name2) g_free (name2);
+    if (demo_mode) {
+        if (!gst_element_link_many(data->queue_preprocess, data->videorate_preprocess, data->capsfilter_preprocess, \
+                                   data->perf_preprocess, data->sink_preprocess, NULL)) {
+            GST_ERROR ("Error linking for queue --> videorate --> capsfilter --> perf --> sink");
+            return DD_ERROR_PIPELINE_LINKING_FAIL;
+        }
+        GST_DEBUG ("Linking for queue --> videorate --> capsfilter --> perf --> sink successfully");
+    } else {
+        if (!gst_element_link_many(data->queue_preprocess, data->perf_preprocess, data->sink_preprocess, NULL)) {
+            GST_ERROR ("Error linking for queue_preprocess --> perf_preprocess --> sink_preprocess");
+            return DD_ERROR_PIPELINE_LINKING_FAIL;
+        }
+        GST_DEBUG ("Linking for queue_preprocess --> perf_preprocess --> sink_preprocess successfully");
+    }
+    if (demo_mode) {
+        if (!gst_element_link_many(data->queue_preprocess2, data->cca, data->text2overlay, \
+                                   data->videorate_display, data->capsfilter_display, data->tee_display, \
+                                   data->perf_display, data->sink_display, NULL)) {
+            GST_ERROR ("Error linking for queue --> cca --> text2overlay --> videorate --> capsfilter \
+                        --> perf --> sink");
+             return DD_ERROR_PIPELINE_LINKING_FAIL;
+        }
+        GST_DEBUG ("Linking for queue --> cca --> text2overlay --> videorate  --> capsfilter --> \
+                    perf --> sink  successfully");
+    } else {
+        if (!gst_element_link_many(data->queue_preprocess2, data->cca, data->text2overlay, \
+                                   data->tee_display, data->perf_display, data->sink_display, NULL)) {
+            GST_ERROR ("Error linking for queue_preprocess2 --> cca --> text2overlay --> perf --> sink");
+            return DD_ERROR_PIPELINE_LINKING_FAIL;
+        }
+        GST_DEBUG ("Linking for queue_raw2 --> cca --> text2overlay --> perf --> sink successfully");
+    }
+
     return DD_SUCCESS;
 }
 
@@ -543,88 +476,67 @@ link_pipeline (AppData *data, gboolean fileplayback) {
  *  into the pipeline bin. Also link file based pipeline.
  *
  *  @param data is the application structure pointer.
- *  @param fileplayback is a boolean data to tell whether it's
- *  file playback or live.
  *  @return Error code.
  */
 DD_ERROR_LOG
-create_pipeline (AppData *data, gboolean fileplayback) {
+create_pipeline (AppData *data) {
     data->pipeline =   gst_pipeline_new("defectdetection");
-    if (fileplayback) {
+    if (file_playback) {
         GST_DEBUG ("It's a file playback");
         data->src               =  gst_element_factory_make("filesrc",      NULL);
-        data->capsfilter        =  gst_element_factory_make("capsfilter",   NULL);
-        data->preprocess        =  gst_element_factory_make("ivas_xfilter", "pre-process");
-        data->canny             =  gst_element_factory_make("ivas_xfilter", "canny-edge");
-        data->edge_tracer       =  gst_element_factory_make("ivas_xfilter", "edge-tracer");
-        data->defect_calculator =  gst_element_factory_make("ivas_xfilter", "defect-calculator");
+    } else {
+        GST_DEBUG ("It's a live playback");
+        data->src                   =  gst_element_factory_make("mediasrcbin",  NULL);
+    }
+    if (file_dump) {
         data->sink_raw          =  gst_element_factory_make("filesink",     NULL);
         data->sink_preprocess   =  gst_element_factory_make("filesink",     NULL);
         data->sink_display      =  gst_element_factory_make("filesink",     NULL);
-        data->tee_raw           =  gst_element_factory_make("tee",          "tee-raw");
-        data->tee_preprocess    =  gst_element_factory_make("tee",          "tee-edge");
-        data->queue_raw         =  gst_element_factory_make("queue",        "queue-raw");
-        data->queue_raw2        =  gst_element_factory_make("queue",        "queue-raw-2");
-        data->queue_preprocess  =  gst_element_factory_make("queue",        "queue-edge");
-        data->queue_preprocess2 =  gst_element_factory_make("queue",        "queue-edge-2");
-        if (!data->pipeline || !data->src || !data->capsfilter || !data->preprocess || !data->canny \
-            || !data->edge_tracer || !data->defect_calculator || !data->sink_display || !data->sink_raw \
-            || !data->sink_preprocess || !data->tee_raw || !data->tee_preprocess || !data->queue_raw \
-            || !data->queue_raw || !data->queue_raw2 || !data->queue_preprocess || !data->queue_preprocess2) {
-            GST_ERROR ("could not create few elements");
-            return DD_ERROR_PIPELINE_CREATE_FAIL;
-        }
-        GST_DEBUG ("All elements are created");
-        gst_bin_add_many(GST_BIN(data->pipeline), data->src, data->capsfilter, data->preprocess, \
-                         data->canny, data->edge_tracer, data->defect_calculator, data->sink_display, \
-                         data->sink_raw, data->queue_raw, data->queue_raw2, data->queue_preprocess, data->queue_preprocess2, \
-                         data->sink_preprocess, data->tee_raw, data->tee_preprocess, NULL);
-        return DD_SUCCESS;
     } else {
-        GST_DEBUG ("It's a live playback");
-        data->src                   =  gst_element_factory_make("mediasrcbin",  "source");
-        data->capsfilter            =  gst_element_factory_make("capsfilter",   "capsfilter");
-        data->preprocess            =  gst_element_factory_make("ivas_xfilter", "pre-processing");
-        data->canny                 =  gst_element_factory_make("ivas_xfilter", "canny-edge");
-        data->edge_tracer           =  gst_element_factory_make("ivas_xfilter", "edge-tracer");
-        data->defect_calculator     =  gst_element_factory_make("ivas_xfilter", "defect-calculator");
-        data->sink_raw              =  gst_element_factory_make("kmssink",      "display-raw");
-        data->sink_preprocess       =  gst_element_factory_make("kmssink",      "display-edge");
-        data->sink_display          =  gst_element_factory_make("kmssink",      "display");
-        data->tee_raw               =  gst_element_factory_make("tee",          "tee-raw");
-        data->tee_preprocess        =  gst_element_factory_make("tee",          "tee-edge");
-        data->queue_raw             =  gst_element_factory_make("queue",        "queue-raw");
-        data->queue_raw2            =  gst_element_factory_make("queue",        "queue-raw-2");
-        data->queue_preprocess      =  gst_element_factory_make("queue",        "queue-edge");
-        data->queue_preprocess2     =  gst_element_factory_make("queue",        "queue-edge-2");
-        data->perf_raw              =  gst_element_factory_make("perf",         "perf-raw");
-        data->perf_preprocess       =  gst_element_factory_make("perf",         "perf-edge");
-        data->perf_display          =  gst_element_factory_make("perf",         "perf-display");
-        data->videorate_raw         =  gst_element_factory_make("videorate",    "rate-raw");
-        data->videorate_preprocess  =  gst_element_factory_make("videorate",    "rate-edge");
-        data->videorate_display     =  gst_element_factory_make("videorate",    "rate");
-        data->capsfilter_raw        =  gst_element_factory_make("capsfilter",   "caps-raw");
-        data->capsfilter_preprocess =  gst_element_factory_make("capsfilter",   "caps-edge");
-        data->capsfilter_display    =  gst_element_factory_make("capsfilter",   "caps");
-        if (!data->pipeline || !data->src || !data->capsfilter || !data->preprocess || !data->canny \
-            || !data->edge_tracer || !data->defect_calculator || !data->sink_display || !data->sink_raw \
-            || !data->sink_preprocess || !data->tee_raw || !data->tee_preprocess || !data->queue_raw \
-            || !data->queue_raw || !data->queue_raw2 || !data->queue_preprocess || !data->queue_preprocess2 \
-            || !data->perf_raw || !data->perf_preprocess || !data->perf_display \
-            || !data->videorate_raw || !data->videorate_preprocess || !data->videorate_display \
-            || !data->capsfilter_raw || !data->capsfilter_preprocess || !data->capsfilter_display) {
-            GST_ERROR ("could not create few elements");
-            return DD_ERROR_PIPELINE_CREATE_FAIL;
-        }
-        GST_DEBUG ("All elements are created");
-        gst_bin_add_many(GST_BIN(data->pipeline), data->src, data->capsfilter, data->preprocess, \
-                         data->canny, data->edge_tracer, data->defect_calculator, data->sink_display, \
-                         data->sink_raw, data->queue_raw, data->queue_raw2, data->queue_preprocess, data->queue_preprocess2, \
-                         data->sink_preprocess, data->tee_raw, data->tee_preprocess, \
-                         data->perf_raw, data->perf_preprocess, data->perf_display, \
-                         data->videorate_raw, data->videorate_preprocess, data->videorate_display, \
-                         data->capsfilter_raw, data->capsfilter_preprocess, data->capsfilter_display, NULL);
+        data->sink_raw          =  gst_element_factory_make("kmssink",      "display-raw");
+        data->sink_preprocess   =  gst_element_factory_make("kmssink",      "display-preprocess");
+        data->sink_display      =  gst_element_factory_make("kmssink",      "display-final");
     }
+    data->capsfilter            =  gst_element_factory_make("capsfilter",   NULL);
+    data->preprocess            =  gst_element_factory_make("ivas_xfilter", "pre-process");
+    data->otsu                  =  gst_element_factory_make("ivas_xfilter", "otsu");
+    data->cca                   =  gst_element_factory_make("ivas_xfilter", "cca");
+    data->text2overlay          =  gst_element_factory_make("ivas_xfilter", "text2overlay");
+    data->tee_raw               =  gst_element_factory_make("tee",          NULL);
+    data->tee_preprocess        =  gst_element_factory_make("tee",          NULL);
+    data->tee_display           =  gst_element_factory_make("tee",          NULL);
+    data->queue_raw             =  gst_element_factory_make("queue",        NULL);
+    data->queue_raw2            =  gst_element_factory_make("queue",        NULL);
+    data->queue_preprocess      =  gst_element_factory_make("queue",        NULL);
+    data->queue_preprocess2     =  gst_element_factory_make("queue",        NULL);
+    data->perf_raw              =  gst_element_factory_make("perf",         NULL);
+    data->perf_preprocess       =  gst_element_factory_make("perf",         NULL);
+    data->perf_display          =  gst_element_factory_make("perf",         NULL);
+    data->videorate_raw         =  gst_element_factory_make("videorate",    NULL);
+    data->videorate_preprocess  =  gst_element_factory_make("videorate",    NULL);
+    data->videorate_display     =  gst_element_factory_make("videorate",    NULL);
+    data->capsfilter_raw        =  gst_element_factory_make("capsfilter",   NULL);
+    data->capsfilter_preprocess =  gst_element_factory_make("capsfilter",   NULL);
+    data->capsfilter_display    =  gst_element_factory_make("capsfilter",   NULL);
+
+    if (!data->pipeline || !data->src || !data->capsfilter || !data->preprocess || !data->otsu \
+        || !data->cca || !data->text2overlay || !data->sink_display || !data->sink_raw \
+        || !data->sink_preprocess || !data->tee_raw || !data->tee_preprocess || !data->tee_display \
+        || !data->queue_raw || !data->queue_raw || !data->queue_raw2 || !data->queue_preprocess \
+        || !data->queue_preprocess2 || !data->perf_raw || !data->perf_preprocess || !data->perf_display \
+        || !data->videorate_raw || !data->videorate_preprocess || !data->videorate_display \
+        || !data->capsfilter_raw || !data->capsfilter_preprocess || !data->capsfilter_display) {
+           GST_ERROR ("could not create few elements");
+           return DD_ERROR_PIPELINE_CREATE_FAIL;
+    }
+    GST_DEBUG ("All elements are created");
+    gst_bin_add_many(GST_BIN(data->pipeline), data->src, data->capsfilter, data->preprocess, \
+                     data->otsu, data->cca, data->text2overlay, data->sink_display, \
+                     data->sink_raw, data->queue_raw, data->queue_raw2, data->queue_preprocess, data->queue_preprocess2, \
+                     data->sink_preprocess, data->tee_raw, data->tee_preprocess, data->tee_display, \
+                     data->perf_raw, data->perf_preprocess, data->perf_display, \
+                     data->videorate_raw, data->videorate_preprocess, data->videorate_display, \
+                     data->capsfilter_raw, data->capsfilter_preprocess, data->capsfilter_display, NULL);
     return DD_SUCCESS;
 }
 
@@ -643,7 +555,7 @@ main (int argc, char **argv) {
     signal(SIGINT, signal_handler);
 
     GST_DEBUG_CATEGORY_INIT (defectdetect_app, "defectdetect-app", 0, "defect detection app");
-    optctx = g_option_context_new ("- Application to detect the defect of Mango on SoM board of Xilinx.");
+    optctx = g_option_context_new ("- Application to detect the defect of Mango on Xilinx board");
     g_option_context_add_main_entries (optctx, entries, NULL);
     g_option_context_add_group (optctx, gst_init_get_option_group ());
     if (!g_option_context_parse (optctx, &argc, &argv, &error)) {
@@ -654,31 +566,31 @@ main (int argc, char **argv) {
     }
     g_option_context_free (optctx);
 
-    if (fileplayback) {
-        if (!in_file || !out_file || !raw_file || !preprocess_file) {
-            g_printerr ("In case of file playback, input file and output files MUST be given\n");
-            return -1;
-        }
-        if (demo_mode) {
-            g_printerr ("In case of file playback, demo mode should be disabled\n");
+    if (file_playback) {
+        if (!in_file) {
+            g_printerr ("In case of file playback, input file path MUST be given\n");
             return -1;
         }
     } else {
-        if (in_file || out_file || raw_file || preprocess_file) {
-            g_printerr ("In case of live playback, input file and output file/s option should NOT be given\n");
+        if (in_file)  {
+            g_printerr ("In case of live playback, input file option should NOT be given\n");
             return -1;
         }
+    }
+    if (final_out && raw_out && preprocess_out) {
+        file_dump = true;
     }
     if (in_file) {
         GST_DEBUG ("In file is %s", in_file);
     }
-    if (out_file) {
-        GST_DEBUG ("In file is %s", out_file);
+    if (final_out) {
+        GST_DEBUG ("Out file is %s", final_out);
     }
     GST_DEBUG ("Width is %d", width);
     GST_DEBUG ("height is %d", height);
     GST_DEBUG ("framerate is %d", framerate);
-    GST_DEBUG ("file playback mode is %s", fileplayback ? "On" : "Off");
+    GST_DEBUG ("file playback mode is %s", file_playback ? "On" : "Off");
+    GST_DEBUG ("file dump is %s", file_dump ? "TRUE" : "FALSE");
     GST_DEBUG ("demo mode is %s", demo_mode ? "On" : "Off");
     if (config_path)
         GST_DEBUG ("config path is %s", config_path);
@@ -690,27 +602,27 @@ main (int argc, char **argv) {
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
         return ret;
     }
-    if (!fileplayback) {
+    if (!file_playback) {
         if (access("/dev/dri/by-path/platform-b0010000.v_mix-card", F_OK) != 0) {
-            g_printerr("ERROR: Mixer device is not ready.\n%s", msgFirmware);
-            return 1;
+            g_printerr("ERROR: Mixer device is not ready.\n%s", msg_firmware);
+            return -1;
         } else {
             exec("echo | modetest -D B0010000.v_mix -s 52@40:3840x2160@NV16");
         }
     }
-    ret = create_pipeline (&data, fileplayback);
+    ret = create_pipeline (&data);
     if (ret != DD_SUCCESS) {
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
         return ret;
     }
 
-    ret = link_pipeline (&data, fileplayback);
+    ret = link_pipeline (&data);
     if (ret != DD_SUCCESS) {
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
         return ret;
     }
 
-    ret = set_pipeline_config (&data, fileplayback);
+    ret = set_pipeline_config (&data);
     if (ret != DD_SUCCESS) {
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
         return ret;
@@ -720,7 +632,7 @@ main (int argc, char **argv) {
     bus_watch_id = gst_bus_add_watch (bus, (GstBusFunc)(cb_message), &data);
     gst_object_unref (bus);
 
-    if (!fileplayback) {
+    if (!file_playback) {
         g_signal_connect (data.src, "pad-added", G_CALLBACK (pad_added_cb), &data);
     }
     GST_DEBUG ("Triggering play command");
@@ -762,8 +674,8 @@ CLOSE:
 
     if (in_file)
         g_free (in_file);
-    if (out_file)
-        g_free (out_file);
+    if (final_out)
+        g_free (final_out);
     return ret;
 }
 
