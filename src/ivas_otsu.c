@@ -23,9 +23,6 @@
 #include <gst/ivas/gstivasinpinfer.h>
 #include <gst/ivas/gstinferencemeta.h>
 
-#define DEFAULT_MIN_THR     	40
-#define DEFAULT_MAX_THR	        255
-
 typedef struct _kern_priv
 {
     int log_level;
@@ -90,39 +87,36 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     ivas_register_write(handle, &(kernel_priv->mem->paddr[0]),   sizeof(uint32_t),     0x40);      /* high threashold */
     ret = ivas_kernel_start (handle);
     if (ret < 0) {
-         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to issue execute command");
-        return 0;
+        LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to issue execute command");
+        return FALSE;
     }
 
     /* wait for kernel completion */
     ret = ivas_kernel_done (handle, 1000);
     if (ret < 0) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to receive response from kernel");
-        return 0;
+        return FALSE;
     }
     thr =  kernel_priv->mem->vaddr[0]; 
 
-    infer_meta = (GstInferenceMeta *) gst_buffer_add_meta ((GstBuffer *)
-        outframe->app_priv, gst_inference_meta_get_info (), NULL);
+    infer_meta = (GstInferenceMeta *) gst_buffer_add_meta ((GstBuffer *)outframe->app_priv,
+                                                     gst_inference_meta_get_info (), NULL);
     if (infer_meta == NULL) {
-        LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level,
-                     "ivas meta data is not available");
-        return -1;
+        LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Meta data is not available");
+        return FALSE;
     }
     if (NULL == infer_meta->prediction) {
-        printf ("saket allocating prediction \n");
+        LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "Allocating prediction");
         infer_meta->prediction = gst_inference_prediction_new ();
     } else {
-        LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level,
-                     "Already allocated prediction");
+        LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "Already allocated prediction");
     }
 
     GstInferencePrediction *predict;
     GstInferenceClassification *a = NULL;
     predict = gst_inference_prediction_new ();
 
-    a = gst_inference_classification_new_full (-1, 0.0,
-        "OTSU THRSHOLD", 0, NULL, NULL, NULL);
+    a = gst_inference_classification_new_full (-1, 0.0, "OTSU THRSHOLD", 0, NULL, NULL, NULL);
     predict->reserved_1 = (void *)thr;
     gst_inference_prediction_append_classification (predict, a);
 

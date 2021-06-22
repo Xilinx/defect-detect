@@ -23,7 +23,6 @@
 #include <gst/ivas/gstivasinpinfer.h>
 #include <gst/ivas/gstinferencemeta.h>
 
-#define DEFAULT_THRESHOLD	60
 #define DEFAULT_MAX_VALUE	255
 #define NORMALIZE_THRESHOLD 13
 
@@ -93,7 +92,7 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
 
     GstInferenceMeta *infer_meta = ((GstInferenceMeta *)gst_buffer_get_meta((GstBuffer *)
                                                                 inframe->app_priv,
-                                                            gst_inference_meta_api_get_type()));
+                                                                gst_inference_meta_api_get_type()));
     if (infer_meta == NULL)
     {
         LOG_MESSAGE(LOG_LEVEL_INFO, kernel_priv->log_level, "ivas meta data is not available for crop");
@@ -102,14 +101,12 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     GstInferencePrediction *root = infer_meta->prediction;
     /* Iterate through the immediate child predictions */
     GSList *tmp = gst_inference_prediction_get_children(root);
-    for (GSList *child_predictions = tmp;
-           child_predictions;
-           child_predictions = g_slist_next(child_predictions))
+    for (GSList *child_predictions = tmp; child_predictions; child_predictions = g_slist_next(child_predictions))
     {
         GstInferencePrediction *child = (GstInferencePrediction *)child_predictions->data;
-
         thr = (uint32_t *)child->reserved_1;
     }
+
     kernel_priv->threshold = *thr - NORMALIZE_THRESHOLD;
     ivas_register_write(handle, &(kernel_priv->threshold), sizeof(uint32_t), 0x28);   /* In threashold */
     ret = ivas_kernel_start (handle);
@@ -124,6 +121,7 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to receive response from kernel");
         return FALSE;
     }
+    g_slist_free(tmp);
     return TRUE;
 }
 

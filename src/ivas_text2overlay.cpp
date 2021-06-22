@@ -29,7 +29,6 @@ using namespace std;
 
 #define DEFAULT_DEFECT_THRESHOLD  0.16
 
-
 enum
 {
   LOG_LEVEL_ERROR,
@@ -168,21 +167,19 @@ extern "C"
     ivas_xoverlaypriv *kpriv = (ivas_xoverlaypriv *) handle->kernel_priv;
     struct overlayframe_info *frameinfo = &(kpriv->frameinfo);
     frameinfo->inframe = input[0];
-    //frameinfo->outframe = output[0];
 
     char *lumaBuf = (char *) frameinfo->inframe->vaddr[0];
     char *lumaOutBuf = (char *) frameinfo->outframe->vaddr[0];
 
     frameinfo->lumaImg.create (input[0]->props.height, input[0]->props.stride, CV_8U);
     frameinfo->lumaImg.data = (unsigned char *) lumaBuf;
-    //frameinfo->lumaOutImg.create (input[0]->props.height, input[0]->props.stride, CV_8U);
-    //frameinfo->lumaOutImg.data = (unsigned char *) lumaOutBuf;
     GstInferenceMeta *infer_meta = ((GstInferenceMeta *)gst_buffer_get_meta((GstBuffer *)
                                                                 frameinfo->inframe->app_priv,
                                                                 gst_inference_meta_api_get_type()));
     if (infer_meta == NULL)
     {
         LOG_MESSAGE(LOG_LEVEL_INFO, "ivas meta data is not available for crop");
+        printf ("ivas meta data is not available \n");
         return FALSE;
     }
     uint32_t *mango_pixel, *defect_pixel;
@@ -232,6 +229,7 @@ extern "C"
               Scalar (255.0, 255.0, 255.0), 1, 1);
       y_point += 30;
     }
+    g_slist_free(tmp);
     return 0;
   }
 

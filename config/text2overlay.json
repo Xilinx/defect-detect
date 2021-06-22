@@ -9,7 +9,7 @@
         "debug_level" : 1,
         "font_size" : 1.0,
         "font" : 3,
-        "x_offset" : 750,
+        "x_offset" : 700,
         "y_offset" : 50,
         "defect_threshold" : 0.16,
         "is_acc_result" : 1

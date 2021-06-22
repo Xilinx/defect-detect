@@ -23,8 +23,8 @@
 #include <gst/ivas/gstivasinpinfer.h>
 #include <gst/ivas/gstinferencemeta.h>
 
-#define DEFAULT_MIN_THR     	40
-#define DEFAULT_MAX_THR	        255
+#define MAX_SUPPORTED_WIDTH         1280
+#define MAX_SUPPORTED_HEIGHT        800
 
 typedef struct _kern_priv
 {
@@ -44,10 +44,14 @@ uint32_t xlnx_kernel_deinit(IVASKernel *handle)
 {
     PreProcessingKernelPriv *kernel_priv;
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
-    ivas_free_buffer (handle, kernel_priv->mango_pix);
-    ivas_free_buffer (handle, kernel_priv->defect_pix);
-    ivas_free_buffer (handle, kernel_priv->tmp_mem1);
-    ivas_free_buffer (handle, kernel_priv->tmp_mem2);
+    if (kernel_priv->mango_pix)
+        ivas_free_buffer (handle, kernel_priv->mango_pix);
+    if (kernel_priv->defect_pix)
+        ivas_free_buffer (handle, kernel_priv->defect_pix);
+    if (kernel_priv->tmp_mem1)
+        ivas_free_buffer (handle, kernel_priv->tmp_mem1);
+    if (kernel_priv->tmp_mem2)
+        ivas_free_buffer (handle, kernel_priv->tmp_mem2);
     free(kernel_priv);
     return 0;
 }
@@ -62,8 +66,11 @@ int32_t xlnx_kernel_init(IVASKernel *handle)
     if (!kernel_priv) {
         printf("Error: Unable to allocate PPE kernel memory\n");
     }
+    uint32_t resolution = MAX_SUPPORTED_HEIGHT * MAX_SUPPORTED_WIDTH;
     kernel_priv->mango_pix  = ivas_alloc_buffer (handle, 1*(sizeof(uint32_t)), IVAS_INTERNAL_MEMORY, NULL);
     kernel_priv->defect_pix = ivas_alloc_buffer (handle, 1*(sizeof(uint32_t)), IVAS_INTERNAL_MEMORY, NULL);
+    kernel_priv->tmp_mem1   = ivas_alloc_buffer (handle, resolution*(sizeof(uint8_t)), IVAS_INTERNAL_MEMORY, NULL);
+    kernel_priv->tmp_mem2   = ivas_alloc_buffer (handle, resolution*(sizeof(uint8_t)), IVAS_INTERNAL_MEMORY, NULL);
 
     /* parse config */
     val = json_object_get (jconfig, "debug_level");
@@ -84,20 +91,11 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     int ret;
     uint32_t *mango_pixel;
     uint32_t *defect_pixel;
-    static int init = 0;
     GstInferenceMeta *infer_meta = NULL;
     IVASFrame *outframe = output[0];
     char *pstr;                   /* prediction string */
 
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
-    uint32_t resolution = input[0]->props.height * input[0]->props.width;
-    if (!init)
-    {
-        kernel_priv->tmp_mem1   = ivas_alloc_buffer (handle, resolution*(sizeof(uint32_t)), IVAS_INTERNAL_MEMORY, NULL);
-        kernel_priv->tmp_mem2   = ivas_alloc_buffer (handle, resolution*(sizeof(uint32_t)), IVAS_INTERNAL_MEMORY, NULL);
-        init = 1;
-    }
-
     ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x10);                /* Input buffer */
     ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x1C);                /* Input buffer */
     ivas_register_write(handle, &(kernel_priv->tmp_mem1->paddr[0]), sizeof(uint64_t), 0x28);   /* temp buffer */
@@ -111,14 +109,14 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     ret = ivas_kernel_start (handle);
     if (ret < 0) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to issue execute command");
-        return 0;
+        return FALSE;
     }
 
     /* wait for kernel completion */
     ret = ivas_kernel_done (handle, 1000);
     if (ret < 0) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to receive response from kernel");
-        return 0;
+        return FALSE;
     }
     mango_pixel =  kernel_priv->mango_pix->vaddr[0];
     defect_pixel =  kernel_priv->defect_pix->vaddr[0];
@@ -126,24 +124,21 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     infer_meta = (GstInferenceMeta *) gst_buffer_add_meta ((GstBuffer *)
         outframe->app_priv, gst_inference_meta_get_info (), NULL);
     if (infer_meta == NULL) {
-        LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level,
-                     "ivas meta data is not available");
-        return -1;
+        LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "ivas meta data is not available");
+        return FALSE;
     }
     if (NULL == infer_meta->prediction) {
-        printf ("saket allocating prediction \n");
+        LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "Allocating prediction");
         infer_meta->prediction = gst_inference_prediction_new ();
     } else {
-        LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level,
-                     "Already allocated prediction");
+        LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "Already allocated prediction");
     }
 
     GstInferencePrediction *predict;
     GstInferenceClassification *a = NULL;
     predict = gst_inference_prediction_new ();
 
-    a = gst_inference_classification_new_full (-1, 0.0,
-        "DEFECT DENSITY", 0, NULL, NULL, NULL);
+    a = gst_inference_classification_new_full (-1, 0.0, "DEFECT DENSITY", 0, NULL, NULL, NULL);
     predict->reserved_1 = (void *) mango_pixel;
     predict->reserved_2 = (void *) defect_pixel;
     gst_inference_prediction_append_classification (predict, a);
@@ -152,7 +147,6 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
 
     pstr = gst_inference_prediction_to_string (infer_meta->prediction);
     free(pstr);
-
     return TRUE;
 }
 
