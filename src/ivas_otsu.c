@@ -14,13 +14,8 @@
  * limitations under the License.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
 #include <ivas/ivaslogs.h>
 #include <ivas/ivas_kernel.h>
-#include <gst/ivas/gstivasinpinfer.h>
 #include <gst/ivas/gstinferencemeta.h>
 
 typedef struct _kern_priv
@@ -29,16 +24,17 @@ typedef struct _kern_priv
     IVASFrame *mem;
 } PreProcessingKernelPriv;
 
-int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NUM_OBJECT], IVASFrame *output[MAX_NUM_OBJECT]);
-int32_t xlnx_kernel_done(IVASKernel *handle);
-int32_t xlnx_kernel_init(IVASKernel *handle);
+int32_t  xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NUM_OBJECT], IVASFrame *output[MAX_NUM_OBJECT]);
+int32_t  xlnx_kernel_done(IVASKernel *handle);
+int32_t  xlnx_kernel_init(IVASKernel *handle);
 uint32_t xlnx_kernel_deinit(IVASKernel *handle);
 
 uint32_t xlnx_kernel_deinit(IVASKernel *handle)
 {
     PreProcessingKernelPriv *kernel_priv;
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
-    ivas_free_buffer (handle, kernel_priv->mem);
+    if (kernel_priv->mem)
+        ivas_free_buffer (handle, kernel_priv->mem);
     free(kernel_priv);
     return 0;
 }
@@ -76,15 +72,15 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     float sigma = 0.0;
     GstInferenceMeta *infer_meta = NULL;
     IVASFrame *outframe = output[0];
-    char *pstr;                   /* prediction string */
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
 
-    ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t),     0x10);      /* Input buffer */
-    ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x28);      /* In Y8 rows */
-    ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t),  0x30);      /* In Y8 columns */
-    ivas_register_write(handle, &(sigma), sizeof(float),                     0x38);      /* low threashold */
-    ivas_register_write(handle, &(output[0]->paddr[0]), sizeof(uint64_t),    0x1C);      /* Output buffer */
-    ivas_register_write(handle, &(kernel_priv->mem->paddr[0]),   sizeof(uint32_t),     0x40);      /* high threashold */
+    ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t),         0x10);      /* Input buffer */
+    ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t),     0x28);      /* Rows */
+    ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t),      0x30);      /* Columns */
+    ivas_register_write(handle, &(sigma), sizeof(float),                         0x38);      /* Sigma */
+    ivas_register_write(handle, &(output[0]->paddr[0]), sizeof(uint64_t),        0x1C);      /* Output buffer */
+    ivas_register_write(handle, &(kernel_priv->mem->paddr[0]), sizeof(uint32_t), 0x40);      /* OTSU threashold */
+
     ret = ivas_kernel_start (handle);
     if (ret < 0) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to issue execute command");
@@ -105,6 +101,7 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Meta data is not available");
         return FALSE;
     }
+
     if (NULL == infer_meta->prediction) {
         LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "Allocating prediction");
         infer_meta->prediction = gst_inference_prediction_new ();
@@ -121,9 +118,6 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     gst_inference_prediction_append_classification (predict, a);
 
     gst_inference_prediction_append (infer_meta->prediction, predict);
-
-    pstr = gst_inference_prediction_to_string (infer_meta->prediction);
-    free(pstr);
 
     return TRUE;
 }

@@ -15,13 +15,9 @@
  */
 
 #include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <iostream>
 #include <ivas/ivas_kernel.h>
 #include <gst/ivas/gstinferencemeta.h>
-
 
 int log_level;
 using namespace cv;
@@ -61,7 +57,6 @@ enum
 struct overlayframe_info
 {
   IVASFrame *inframe;
-  IVASFrame *outframe;
   Mat lumaImg;
   Mat lumaOutImg;
 };
@@ -156,7 +151,7 @@ extern "C"
     ivas_xoverlaypriv *kpriv = (ivas_xoverlaypriv *) handle->kernel_priv;
 
     if (kpriv)
-      free (kpriv);
+        free (kpriv);
 
     return 0;
   }
@@ -169,27 +164,22 @@ extern "C"
     frameinfo->inframe = input[0];
 
     char *lumaBuf = (char *) frameinfo->inframe->vaddr[0];
-    char *lumaOutBuf = (char *) frameinfo->outframe->vaddr[0];
 
     frameinfo->lumaImg.create (input[0]->props.height, input[0]->props.stride, CV_8U);
     frameinfo->lumaImg.data = (unsigned char *) lumaBuf;
-    GstInferenceMeta *infer_meta = ((GstInferenceMeta *)gst_buffer_get_meta((GstBuffer *)
-                                                                frameinfo->inframe->app_priv,
-                                                                gst_inference_meta_api_get_type()));
-    if (infer_meta == NULL)
-    {
+    GstInferenceMeta *infer_meta;
+    infer_meta = ((GstInferenceMeta *) gst_buffer_get_meta((GstBuffer *)frameinfo->inframe->app_priv,
+                                                                 gst_inference_meta_api_get_type()));
+    if (infer_meta == NULL) {
         LOG_MESSAGE(LOG_LEVEL_INFO, "ivas meta data is not available for crop");
-        printf ("ivas meta data is not available \n");
         return FALSE;
     }
     uint32_t *mango_pixel, *defect_pixel;
     GstInferencePrediction *root = infer_meta->prediction;
     /* Iterate through the immediate child predictions */
     GSList *tmp = gst_inference_prediction_get_children(root);
-    for (GSList *child_predictions = tmp;
-           child_predictions;
-           child_predictions = g_slist_next(child_predictions))
-    {
+
+    for (GSList *child_predictions = tmp; child_predictions; child_predictions = g_slist_next(child_predictions)) {
         GstInferencePrediction *child = (GstInferencePrediction *)child_predictions->data;
         mango_pixel = (uint32_t *)child->reserved_1;
         defect_pixel = (uint32_t *)child->reserved_2;
@@ -201,41 +191,43 @@ extern "C"
     char text_buffer[512] = {0,};
     int y_point = kpriv->y_offset;
     if (defect_decision) {
-      kpriv->total_defect++;
+        kpriv->total_defect++;
     }
     kpriv->total_detection++;
 
     LOG_MESSAGE (LOG_LEVEL_DEBUG, "Defect Density: %.2lf %%", defect_density);
     sprintf(text_buffer, "Defect Density: %.2lf %%", defect_density);
-    printf ("Defect Density: %.2lf %%\t", defect_density);
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "text buffer : %s", text_buffer);
     /* Draw label text on the filled rectanngle */
-    putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
-            Scalar (255.0, 255.0, 255.0), 1, 1);
+    putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font,
+            kpriv->font_size, Scalar (255.0, 255.0, 255.0), 1, 1);
     y_point += 30;
 
     LOG_MESSAGE (LOG_LEVEL_DEBUG, "Is Defected: %s", defect_decision ? "Yes": "No");
     sprintf(text_buffer, "Is Defected: %s", defect_decision ? "Yes": "No");
-    printf("Is Defected: %s\n", defect_decision ? "Yes": "No");
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, "text buffer : %s", text_buffer);
     /* Draw label text on the filled rectanngle */
-    putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
-            Scalar (255.0, 255.0, 255.0), 1, 1);
+    putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font,
+            kpriv->font_size, Scalar (255.0, 255.0, 255.0), 1, 1);
     y_point += 30;
 
     if (kpriv->is_acc_result) {
-      LOG_MESSAGE (LOG_LEVEL_DEBUG, "Accumulated Defects: %u", kpriv->total_defect);
-      sprintf(text_buffer, "Accumulated defects: %u", kpriv->total_defect);
-      /* Draw label text on the filled rectanngle */
-      putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font, kpriv->font_size,
-              Scalar (255.0, 255.0, 255.0), 1, 1);
-      y_point += 30;
+        LOG_MESSAGE (LOG_LEVEL_DEBUG, "Accumulated Defects: %u", kpriv->total_defect);
+        sprintf(text_buffer, "Accumulated defects: %u", kpriv->total_defect);
+        LOG_MESSAGE (LOG_LEVEL_DEBUG, "text buffer : %s", text_buffer);
+         /* Draw label text on the filled rectanngle */
+        putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font,
+                kpriv->font_size, Scalar (255.0, 255.0, 255.0), 1, 1);
+        y_point += 30;
     }
     g_slist_free(tmp);
+
     return 0;
   }
 
 
   int32_t xlnx_kernel_done (IVASKernel * handle)
   {
-    return 0;
+      return 0;
   }
 }

@@ -15,18 +15,14 @@
  * limitations under the License.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include <stdlib.h>
-#include <math.h>
 #include <gst/gst.h>
 #include <gst/video/videooverlay.h>
 #include <string.h>
 #include <unistd.h>
 #include <memory>
 #include <stdexcept>
+#include <glob.h>
+#include <sstream>
 
 using namespace std;
 
@@ -76,7 +72,6 @@ gboolean file_dump = FALSE;
 gboolean demo_mode = FALSE;
 static gchar* in_file = NULL;
 static gchar* config_path  = (gchar *)"/opt/xilinx/share/ivas/defect-detect/";
-static gchar* media_node   = (gchar *)"/dev/media0";
 static gchar *msg_firmware = (gchar *)"Load the HW accelerator firmware first. Use command: xmutil loadapp kv260-defect-detect\n";
 static gchar* final_out = NULL;
 static gchar* preprocess_out = NULL;
@@ -84,6 +79,7 @@ static gchar* raw_out = NULL;
 guint width = 1280;
 guint height = 800;
 guint framerate = 60;
+static std::string dev_node("");
 
 static GOptionEntry entries[] =
 {
@@ -94,9 +90,7 @@ static GOptionEntry entries[] =
     { "width",        'w', 0, G_OPTION_ARG_INT, &width, "resolution width of the input", "1280"},
     { "height",       'h', 0, G_OPTION_ARG_INT, &height, "resolution height of the input", "800"},
     { "framerate",    'r', 0, G_OPTION_ARG_INT, &framerate, "framerate of the input source", "60"},
-    { "inputtype",    'f', 0, G_OPTION_ARG_INT, &file_playback, "For file input value must be 1, otherwise 0, default is 0", NULL},
     { "demomode",     'd', 0, G_OPTION_ARG_INT, &demo_mode, "For Demo mode value must be 1, otherwise 0, default is 0", NULL},
-    { "medianode",    'm', 0, G_OPTION_ARG_STRING, &media_node, "Media node for the live use case, default is /dev/media0", NULL},
     { "cfgpath",      'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON config file path", "config file path"},
     { NULL }
 };
@@ -247,12 +241,12 @@ set_pipeline_config (AppData *data) {
         g_object_set(G_OBJECT(data->queue_raw2),        "max-size-buffers", 1,  NULL);
         g_object_set(G_OBJECT(data->queue_preprocess),  "max-size-buffers", 1,  NULL);
         g_object_set(G_OBJECT(data->queue_preprocess2), "max-size-buffers", 1,  NULL);
-        g_object_set(G_OBJECT(data->src),               "media-device", media_node,  NULL);
+        g_object_set(G_OBJECT(data->src),               "media-device", dev_node.c_str(), NULL);
     }
     if (file_dump) {
         g_object_set(G_OBJECT(data->sink_raw),       "location",  raw_out,        NULL);
         g_object_set(G_OBJECT(data->sink_preprocess),"location",  preprocess_out, NULL);
-        g_object_set(G_OBJECT(data->sink_display),   "location",  final_out,        NULL);
+        g_object_set(G_OBJECT(data->sink_display),   "location",  final_out,      NULL);
     } else {
         g_object_set(G_OBJECT(data->sink_raw),          "bus-id",       DRM_BUS_ID,  NULL);
         g_object_set(G_OBJECT(data->sink_raw),          "plane-id",     plane_id++,  NULL);
@@ -540,6 +534,42 @@ create_pipeline (AppData *data) {
     return DD_SUCCESS;
 }
 
+static std::string
+FindMIPIDev() {
+    glob_t globbuf;
+
+    glob("/dev/media*", 0, NULL, &globbuf);
+    for (int i = 0; i < globbuf.gl_pathc; i++) {
+        std::ostringstream cmd;
+        cmd << "media-ctl -d " << globbuf.gl_pathv[i] << " -p | grep driver | grep xilinx-video | wc -l";
+
+        std::string a = exec(cmd.str().c_str());
+        a=a.substr(0, a.find("\n"));
+        if ( a == std::string("1")) {
+            dev_node = globbuf.gl_pathv[i];
+            break;
+        }
+    }
+    globfree(&globbuf);
+    return dev_node;
+}
+
+static gint
+CheckMIPISrc() {
+    std::string mipidev("");
+    mipidev = FindMIPIDev();
+    if (mipidev == "") {
+        g_printerr("ERROR: MIPI device is not ready.\n%s", msg_firmware);
+        return 1;
+    }
+
+    if ( access( mipidev.c_str(), F_OK ) != 0) {
+        g_printerr("ERROR: Device %s is not ready.\n%s", mipidev.c_str(), msg_firmware);
+        return 1;
+    }
+    return 0;
+}
+
 gint
 main (int argc, char **argv) {
     AppData data;
@@ -566,36 +596,35 @@ main (int argc, char **argv) {
     }
     g_option_context_free (optctx);
 
-    if (file_playback) {
-        if (!in_file) {
-            g_printerr ("In case of file playback, input file path MUST be given\n");
-            return -1;
-        }
-    } else {
-        if (in_file)  {
-            g_printerr ("In case of live playback, input file option should NOT be given\n");
-            return -1;
-        }
+    if (in_file) {
+        file_playback = TRUE;
     }
+
     if (final_out && raw_out && preprocess_out) {
         file_dump = true;
     }
+
     if (in_file) {
         GST_DEBUG ("In file is %s", in_file);
     }
-    if (final_out) {
-        GST_DEBUG ("Out file is %s", final_out);
-    }
+
     GST_DEBUG ("Width is %d", width);
     GST_DEBUG ("height is %d", height);
     GST_DEBUG ("framerate is %d", framerate);
-    GST_DEBUG ("file playback mode is %s", file_playback ? "On" : "Off");
+    GST_DEBUG ("file playback mode is %s", file_playback ? "TRUE" : "FALSE");
     GST_DEBUG ("file dump is %s", file_dump ? "TRUE" : "FALSE");
     GST_DEBUG ("demo mode is %s", demo_mode ? "On" : "Off");
+
     if (config_path)
         GST_DEBUG ("config path is %s", config_path);
-    if (media_node)
-        GST_DEBUG ("media node is %s", media_node);
+
+    if (!file_playback && (CheckMIPISrc() != 0)) {
+        g_printerr ("MIPI media node not found, please check the connection of camera\n");
+        return -1;
+    }
+
+    if (dev_node.c_str())
+        GST_DEBUG ("media node is %s", dev_node.c_str());
 
     if (width > MAX_WIDTH || height > MAX_HEIGHT) {
         ret = DD_ERROR_RESOLUTION_NOT_SUPPORTED;
@@ -610,6 +639,7 @@ main (int argc, char **argv) {
             exec("echo | modetest -D B0010000.v_mix -s 52@40:3840x2160@NV16");
         }
     }
+
     ret = create_pipeline (&data);
     if (ret != DD_SUCCESS) {
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
@@ -627,6 +657,7 @@ main (int argc, char **argv) {
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
         return ret;
     }
+
     /* we add a message handler */
     bus = gst_pipeline_get_bus (GST_PIPELINE (data.pipeline));
     bus_watch_id = gst_bus_add_watch (bus, (GstBusFunc)(cb_message), &data);
@@ -676,6 +707,10 @@ CLOSE:
         g_free (in_file);
     if (final_out)
         g_free (final_out);
+    if (raw_out)
+        g_free (raw_out);
+    if (preprocess_out)
+        g_free (preprocess_out);
     return ret;
 }
 

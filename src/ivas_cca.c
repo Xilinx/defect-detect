@@ -14,13 +14,8 @@
  * limitations under the License.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
 #include <ivas/ivaslogs.h>
 #include <ivas/ivas_kernel.h>
-#include <gst/ivas/gstivasinpinfer.h>
 #include <gst/ivas/gstinferencemeta.h>
 
 #define MAX_SUPPORTED_WIDTH         1280
@@ -93,7 +88,6 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     uint32_t *defect_pixel;
     GstInferenceMeta *infer_meta = NULL;
     IVASFrame *outframe = output[0];
-    char *pstr;                   /* prediction string */
 
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
     ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x10);                /* Input buffer */
@@ -101,10 +95,10 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     ivas_register_write(handle, &(kernel_priv->tmp_mem1->paddr[0]), sizeof(uint64_t), 0x28);   /* temp buffer */
     ivas_register_write(handle, &(kernel_priv->tmp_mem2->paddr[0]), sizeof(uint64_t), 0x34);   /* temp buffer */
     ivas_register_write(handle, &(output[0]->paddr[0]), sizeof(uint64_t), 0x40);               /* Output buffer */
-    ivas_register_write(handle, &(kernel_priv->mango_pix->paddr[0]), sizeof(uint64_t), 0x4C);  /* manog pixel */
+    ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x64);            /* rows */
+    ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t), 0x6C);             /* columns */
+    ivas_register_write(handle, &(kernel_priv->mango_pix->paddr[0]), sizeof(uint64_t), 0x4C);  /* mango pixel */
     ivas_register_write(handle, &(kernel_priv->defect_pix->paddr[0]), sizeof(uint64_t), 0x58); /* defect pixel */
-    ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x64);            /* In Y8 rows */
-    ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t), 0x6C);             /* In Y8 columns */
 
     ret = ivas_kernel_start (handle);
     if (ret < 0) {
@@ -118,11 +112,12 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to receive response from kernel");
         return FALSE;
     }
+
     mango_pixel =  kernel_priv->mango_pix->vaddr[0];
     defect_pixel =  kernel_priv->defect_pix->vaddr[0];
 
-    infer_meta = (GstInferenceMeta *) gst_buffer_add_meta ((GstBuffer *)
-        outframe->app_priv, gst_inference_meta_get_info (), NULL);
+    infer_meta = (GstInferenceMeta *) gst_buffer_add_meta ((GstBuffer *) outframe->app_priv,
+                                                      gst_inference_meta_get_info (), NULL);
     if (infer_meta == NULL) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "ivas meta data is not available");
         return FALSE;
@@ -144,9 +139,6 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     gst_inference_prediction_append_classification (predict, a);
 
     gst_inference_prediction_append (infer_meta->prediction, predict);
-
-    pstr = gst_inference_prediction_to_string (infer_meta->prediction);
-    free(pstr);
     return TRUE;
 }
 

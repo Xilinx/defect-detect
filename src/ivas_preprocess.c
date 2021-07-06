@@ -14,13 +14,8 @@
  * limitations under the License.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
 #include <ivas/ivaslogs.h>
 #include <ivas/ivas_kernel.h>
-#include <gst/ivas/gstivasinpinfer.h>
 #include <gst/ivas/gstinferencemeta.h>
 
 #define DEFAULT_MAX_VALUE	255
