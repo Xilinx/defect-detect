@@ -618,11 +618,6 @@ main (int argc, char **argv) {
     if (config_path)
         GST_DEBUG ("config path is %s", config_path);
 
-    if (!file_playback && (CheckMIPISrc() != 0)) {
-        g_printerr ("MIPI media node not found, please check the connection of camera\n");
-        return -1;
-    }
-
     if (dev_node.c_str())
         GST_DEBUG ("media node is %s", dev_node.c_str());
 
@@ -631,13 +626,16 @@ main (int argc, char **argv) {
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
         return ret;
     }
-    if (!file_playback) {
-        if (access("/dev/dri/by-path/platform-b0010000.v_mix-card", F_OK) != 0) {
-            g_printerr("ERROR: Mixer device is not ready.\n%s", msg_firmware);
-            return -1;
-        } else {
-            exec("echo | modetest -D B0010000.v_mix -s 52@40:3840x2160@NV16");
-        }
+    if (access("/dev/dri/by-path/platform-b0010000.v_mix-card", F_OK) != 0) {
+        g_printerr("ERROR: Mixer device is not ready.\n%s", msg_firmware);
+        return -1;
+    } else {
+        exec("echo | modetest -D B0010000.v_mix -s 52@40:3840x2160@NV16");
+    }
+
+    if (!file_playback && (CheckMIPISrc() != 0)) {
+        g_printerr ("MIPI media node not found, please check the connection of camera\n");
+        return -1;
     }
 
     ret = create_pipeline (&data);
