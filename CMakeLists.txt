@@ -69,6 +69,7 @@ install(FILES
     )
 
 install(PROGRAMS
+	script/defect-detect-install.py
     DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES
