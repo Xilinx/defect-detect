@@ -73,9 +73,9 @@
 3. How to run application:
 
     1. Interacting with the application
-    The application is targeted to run only with file based input.
+    The application is targeted to run only MIPI and file based inputs.
 
-    We assume input file is to support resolution=1280x800(width=1280 and height=800) format=GRAY8(Y8)
+    We assume input to support resolution=1280x800(width=1280 and height=800) format=GRAY8(Y8)
 
         There are two ways to interact with application, via Jyputer notebook or Command line
 
