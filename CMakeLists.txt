@@ -83,7 +83,7 @@ install(DIRECTORY
     notebook/
     DESTINATION ${INSTALL_PATH}/share/notebooks/defect-detect)
 
-set(VERSION "1.0.1")
+set(VERSION "2.0.1")
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")
 set(CPACK_PACKAGE_NAME "DefectDetect")
