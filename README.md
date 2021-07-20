@@ -74,6 +74,10 @@ There are two ways to interact with application, via Jyputer notebook or Command
 
 ### Juypter notebook
 
+Run the python script to install jupyter notebook at specified path.
+* Example:
+	python3 defect-detect-install.py -d /home/petalinux/notebooks
+
 Use a web-browser (e.g. Chrome, Firefox) to interact with the platform.
 
 The Jupyter notebook URL can be found with command:
