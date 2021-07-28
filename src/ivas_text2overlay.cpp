@@ -58,7 +58,6 @@ struct overlayframe_info
 {
   IVASFrame *inframe;
   Mat lumaImg;
-  Mat lumaOutImg;
 };
 
 struct ivas_xoverlaypriv
@@ -69,7 +68,6 @@ struct ivas_xoverlaypriv
   unsigned int font;
   unsigned int y_offset;
   unsigned int x_offset;
-  unsigned int total_detection;
   unsigned int total_defect;
   struct overlayframe_info frameinfo;
 };
@@ -89,7 +87,6 @@ extern "C"
     json_t *val;
 
     /* Initialize config params with default values */
-    kpriv->total_detection = 0;
     kpriv->total_defect = 0;
 
     val = json_object_get (jconfig, "debug_level");
@@ -193,7 +190,6 @@ extern "C"
     if (defect_decision) {
         kpriv->total_defect++;
     }
-    kpriv->total_detection++;
 
     LOG_MESSAGE (LOG_LEVEL_DEBUG, "Defect Density: %.2lf %%", defect_density);
     sprintf(text_buffer, "Defect Density: %.2lf %%", defect_density);
@@ -218,7 +214,6 @@ extern "C"
          /* Draw label text on the filled rectanngle */
         putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font,
                 kpriv->font_size, Scalar (255.0, 255.0, 255.0), 1, 1);
-        y_point += 30;
     }
     g_slist_free(tmp);
 

@@ -80,9 +80,9 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
 
     ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x10);       /* Input buffer */
-    ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x38);   /* In Y8 rows */
-    ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t), 0x40);    /* In Y8 columns */
-    ivas_register_write(handle, &(kernel_priv->max_value), sizeof(uint32_t), 0x30);   /* In Y8 height */
+    ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x38);   /* Rows */
+    ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t), 0x40);    /* Columns */
+    ivas_register_write(handle, &(kernel_priv->max_value), sizeof(uint32_t), 0x30);   /* Max Threshold Value */
     ivas_register_write(handle, &(output[0]->paddr[0]), sizeof(uint64_t), 0x1C);      /* Output buffer */
 
     GstInferenceMeta *infer_meta = ((GstInferenceMeta *)gst_buffer_get_meta((GstBuffer *)

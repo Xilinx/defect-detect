@@ -46,8 +46,7 @@ install(TARGETS ivas_otsu DESTINATION ${INSTALL_PATH}/lib)
 add_library(ivas_text2overlay SHARED src/ivas_text2overlay.cpp)
 target_include_directories(ivas_text2overlay PRIVATE ${GSTREAMER_INCLUDE_DIRS})
 target_link_libraries(ivas_text2overlay
-  gstreamer-1.0 gstbase-1.0 gobject-2.0 glib-2.0 gstvideo-1.0 gstallocators-1.0
-  gstivasinfermeta-1.0 jansson ivasutil ${OpenCV_LIBS} glog)
+  gstreamer-1.0 glib-2.0 gstivasinfermeta-1.0 jansson ivasutil ${OpenCV_LIBS} glog)
 install(TARGETS ivas_text2overlay DESTINATION ${INSTALL_PATH}/lib)
 
 add_library(ivas_preprocess SHARED src/ivas_preprocess.c)
@@ -59,7 +58,7 @@ install(TARGETS ivas_preprocess DESTINATION ${INSTALL_PATH}/lib)
 add_executable(defect-detect src/main.cpp)
 target_include_directories(defect-detect PRIVATE ${GSTREAMER_INCLUDE_DIRS})
 target_link_libraries(defect-detect
-  gstapp-1.0 gstreamer-1.0 gstbase-1.0 gobject-2.0 glib-2.0 gstvideo-1.0 gstallocators-1.0 glib-2.0 gobject-2.0 )
+  gstreamer-1.0 gobject-2.0 glib-2.0 gstvideo-1.0 )
 install(TARGETS defect-detect DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES

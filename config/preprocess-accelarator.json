@@ -8,7 +8,6 @@
       "library-name": "libivas_preprocess.so",
       "config": {
         "debug_level" : 1,
-        "threshold": 35,
         "max_value": 255
       }
     }

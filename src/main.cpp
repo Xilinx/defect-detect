@@ -56,7 +56,7 @@ typedef enum {
 typedef struct _AppData {
     GstElement *pipeline, *capsfilter, *src;
     GstElement *sink_raw, *sink_preprocess, *sink_display;
-    GstElement *tee_raw, *tee_preprocess, *tee_display;
+    GstElement *tee_raw, *tee_preprocess;
     GstElement *queue_raw, *queue_raw2, *queue_preprocess, *queue_preprocess2;
     GstElement *perf_raw, *perf_preprocess, *perf_display;
     GstElement *videorate_raw, *videorate_preprocess, *videorate_display;
@@ -110,7 +110,7 @@ void
 signal_handler (gint sig) {
      signal(sig, SIG_IGN);
      GST_DEBUG ("Hit Ctrl-C, Quitting the app now");
-     if (loop && g_main_is_running (loop)) {
+     if (loop && g_main_loop_is_running (loop)) {
         GST_DEBUG ("Quitting the loop");
         g_main_loop_quit (loop);
      }
@@ -158,7 +158,7 @@ cb_message (GstBus *bus, GstMessage *msg, AppData *data) {
         g_printerr ("Error: %s\n", err->message);
         g_error_free (err);
         g_free (debug);
-        if (loop && g_main_is_running (loop)) {
+        if (loop && g_main_loop_is_running (loop)) {
             GST_DEBUG ("Quitting the loop \n");
             g_main_loop_quit (loop);
         }
@@ -166,7 +166,7 @@ cb_message (GstBus *bus, GstMessage *msg, AppData *data) {
     case GST_MESSAGE_EOS:
         /* end-of-stream */
         GST_DEBUG ("End Of Stream");
-        if (loop && g_main_is_running (loop)) {
+        if (loop && g_main_loop_is_running (loop)) {
             GST_DEBUG ("Quitting the loop");
             g_main_loop_quit (loop);
         }
@@ -442,7 +442,7 @@ link_pipeline (AppData *data) {
     }
     if (demo_mode) {
         if (!gst_element_link_many(data->queue_preprocess2, data->cca, data->text2overlay, \
-                                   data->videorate_display, data->capsfilter_display, data->tee_display, \
+                                   data->videorate_display, data->capsfilter_display, \
                                    data->perf_display, data->sink_display, NULL)) {
             GST_ERROR ("Error linking for queue --> cca --> text2overlay --> videorate --> capsfilter \
                         --> perf --> sink");
@@ -452,7 +452,7 @@ link_pipeline (AppData *data) {
                     perf --> sink  successfully");
     } else {
         if (!gst_element_link_many(data->queue_preprocess2, data->cca, data->text2overlay, \
-                                   data->tee_display, data->perf_display, data->sink_display, NULL)) {
+                                   data->perf_display, data->sink_display, NULL)) {
             GST_ERROR ("Error linking for queue_preprocess2 --> cca --> text2overlay --> perf --> sink");
             return DD_ERROR_PIPELINE_LINKING_FAIL;
         }
@@ -498,7 +498,6 @@ create_pipeline (AppData *data) {
     data->text2overlay          =  gst_element_factory_make("ivas_xfilter", "text2overlay");
     data->tee_raw               =  gst_element_factory_make("tee",          NULL);
     data->tee_preprocess        =  gst_element_factory_make("tee",          NULL);
-    data->tee_display           =  gst_element_factory_make("tee",          NULL);
     data->queue_raw             =  gst_element_factory_make("queue",        NULL);
     data->queue_raw2            =  gst_element_factory_make("queue",        NULL);
     data->queue_preprocess      =  gst_element_factory_make("queue",        NULL);
@@ -515,7 +514,7 @@ create_pipeline (AppData *data) {
 
     if (!data->pipeline || !data->src || !data->capsfilter || !data->preprocess || !data->otsu \
         || !data->cca || !data->text2overlay || !data->sink_display || !data->sink_raw \
-        || !data->sink_preprocess || !data->tee_raw || !data->tee_preprocess || !data->tee_display \
+        || !data->sink_preprocess || !data->tee_raw || !data->tee_preprocess \
         || !data->queue_raw || !data->queue_raw || !data->queue_raw2 || !data->queue_preprocess \
         || !data->queue_preprocess2 || !data->perf_raw || !data->perf_preprocess || !data->perf_display \
         || !data->videorate_raw || !data->videorate_preprocess || !data->videorate_display \
@@ -527,7 +526,7 @@ create_pipeline (AppData *data) {
     gst_bin_add_many(GST_BIN(data->pipeline), data->src, data->capsfilter, data->preprocess, \
                      data->otsu, data->cca, data->text2overlay, data->sink_display, \
                      data->sink_raw, data->queue_raw, data->queue_raw2, data->queue_preprocess, data->queue_preprocess2, \
-                     data->sink_preprocess, data->tee_raw, data->tee_preprocess, data->tee_display, \
+                     data->sink_preprocess, data->tee_raw, data->tee_preprocess, \
                      data->perf_raw, data->perf_preprocess, data->perf_display, \
                      data->videorate_raw, data->videorate_preprocess, data->videorate_display, \
                      data->capsfilter_raw, data->capsfilter_preprocess, data->capsfilter_display, NULL);
@@ -535,7 +534,7 @@ create_pipeline (AppData *data) {
 }
 
 static std::string
-FindMIPIDev() {
+find_mipi_dev() {
     glob_t globbuf;
 
     glob("/dev/media*", 0, NULL, &globbuf);
@@ -555,9 +554,9 @@ FindMIPIDev() {
 }
 
 static gint
-CheckMIPISrc() {
+check_mipi_src() {
     std::string mipidev("");
-    mipidev = FindMIPIDev();
+    mipidev = find_mipi_dev();
     if (mipidev == "") {
         g_printerr("ERROR: MIPI device is not ready.\n%s", msg_firmware);
         return 1;
@@ -633,7 +632,7 @@ main (int argc, char **argv) {
         exec("echo | modetest -D B0010000.v_mix -s 52@40:3840x2160@NV16");
     }
 
-    if (!file_playback && (CheckMIPISrc() != 0)) {
+    if (!file_playback && (check_mipi_src() != 0)) {
         g_printerr ("MIPI media node not found, please check the connection of camera\n");
         return -1;
     }
