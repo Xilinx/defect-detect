@@ -69,7 +69,8 @@ install(FILES
     )
 
 install(PROGRAMS
-	script/defect-detect-install.py
+    script/defect-detect-install.py
+    script/ar0144-sensor-calib.sh
     DESTINATION ${INSTALL_PATH}/bin)
 
 install(FILES
