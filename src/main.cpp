@@ -237,11 +237,7 @@ set_pipeline_config (AppData *data) {
         g_object_set(G_OBJECT(data->src),            "location",  in_file,         NULL);
         g_object_set(G_OBJECT(data->src),            "blocksize", block_size,      NULL);
     } else {
-        g_object_set(G_OBJECT(data->queue_raw),         "max-size-buffers", 1,  NULL);
-        g_object_set(G_OBJECT(data->queue_raw2),        "max-size-buffers", 1,  NULL);
-        g_object_set(G_OBJECT(data->queue_preprocess),  "max-size-buffers", 1,  NULL);
-        g_object_set(G_OBJECT(data->queue_preprocess2), "max-size-buffers", 1,  NULL);
-        g_object_set(G_OBJECT(data->src),               "media-device", dev_node.c_str(), NULL);
+        g_object_set(G_OBJECT(data->src),            "media-device", dev_node.c_str(), NULL);
     }
     if (file_dump) {
         g_object_set(G_OBJECT(data->sink_raw),       "location",  raw_out,        NULL);
