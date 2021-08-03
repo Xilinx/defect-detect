@@ -14,43 +14,46 @@
 # limitations under the License.
 #
 #
-# Below pipeline is to run the live playback. Only MIPI source is supported.
-# media node has to be changed as per media entry.
-#
-#
-if [ $# -eq 0 ]
-  then
-    echo "No arguments supplied"
-    echo "Please give a v4l2 sub device in the command line i.e. sudo ar0144-sensor-calib.sh 0"
-    echo "v4l-subdev of sensor can be obtained from media graph"
+
+VCARD="/dev/dri/by-path/platform-b0010000.v_mix-card"
+if [ ! -e "$VCARD" ]
+then
+    echo "$VCARD not found."
+    echo "Please make sure that the HW accelerator firmware is loaded via xmutil loadapp kv260-defect-detect."
     exit 1
 fi
 
-subdev=${1}
+MEDIA_CMD=$(media-ctl -d /dev/media0 -p)
+
+TRIM_ENTITY_12=${MEDIA_CMD#*"entity 12"}
+
+TRIM_DEVICE_NODE=${TRIM_ENTITY_12#*"device node name"}
+
+SUBDEV=($TRIM_DEVICE_NODE)
 
 # *********************** GAMMA ************************
 # To set the GAMMA value as 1.5 write gamma=0x1800
 # To set the GAMMA value as 2 write gamma=0x2000
 # To set the GAMMA value as 2.2 write gamma=0x2333
 # To set the GAMMA value as 2.5 write gamma=0x2800
-v4l2-ctl -d /dev/v4l-subdev${subdev} -c gamma=0x1800
+v4l2-ctl -d ${SUBDEV} -c gamma=0x1800
 
 # *********************** Exposure  ********************
 # To set auto exposure write 'exposure=12'
 # For manual mode write 'exposure=0'
-v4l2-ctl -d /dev/v4l-subdev${subdev} -c exposure=12
+v4l2-ctl -d ${SUBDEV} -c exposure=12
 
 # **************************** GAIN ********************
 # To set the gain value 5 write 'gain=0x0500'
 # To set the gain value 3 write 'gain=0x0300'
-v4l2-ctl -d /dev/v4l-subdev${subdev} -c gain=0x500
+v4l2-ctl -d ${SUBDEV} -c gain=0x500
 
 # *********************** Exposure Metering *****************************
 # To set AE_Metering Mode as Average write 'exposure_metering=0'
 # To set AE_Metering Mode as wide center write 'exposure_metering=0x1'
 # To set AE_Metering Mode as narrow center write 'exposure_metering=0x2
 # To set AE_Metering Mode as spot write 'exposure_metering=0x3
-v4l2-ctl -d /dev/v4l-subdev${subdev} -c exposure_metering=0x2
+v4l2-ctl -d ${SUBDEV} -c exposure_metering=0x2
 
 # *********************** Satruation *******************
 # To set Saturation as 0 write 'saturation=0'
@@ -58,7 +61,7 @@ v4l2-ctl -d /dev/v4l-subdev${subdev} -c exposure_metering=0x2
 # To set Saturation as 1 write 'saturation=0x1000'
 # To set Saturation as 1.5 write 'saturation=0x1800'
 # To set Saturation as 2 write 'saturation=0x2000'
-v4l2-ctl -d /dev/v4l-subdev${subdev} -c saturation=0x800
+v4l2-ctl -d ${SUBDEV} -c saturation=0x800
 
 # *********************** Contrast *********************
 # To set contrast as -5.0 write 'contrast=0xB000'
@@ -66,7 +69,7 @@ v4l2-ctl -d /dev/v4l-subdev${subdev} -c saturation=0x800
 # To set contrast as 0 write 'contrast=0x0000'
 # To set contrast as 2.5 write 'contrast=0x2800'
 # To set contrast as 5 write 'contrast=0x5000'
-v4l2-ctl -d /dev/v4l-subdev${subdev} -c contrast=0xB000
+v4l2-ctl -d ${SUBDEV} -c contrast=0xB000
 
 # *********************** Brightness *******************
-v4l2-ctl -d /dev/v4l-subdev${subdev} -c brightness=0xFF
+v4l2-ctl -d ${SUBDEV} -c brightness=0xFF

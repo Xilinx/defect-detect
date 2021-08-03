@@ -144,14 +144,14 @@ static std::string exec(const char* cmd) {
  *  @return gboolean.
  */
 static gboolean
-cb_message (GstBus *bus, GstMessage *msg, AppData *data) {
+message_cb (GstBus *bus, GstMessage *msg, AppData *data) {
     GError *err;
     gchar *debug;
     switch (GST_MESSAGE_TYPE (msg)) {
     case GST_MESSAGE_INFO:
         gst_message_parse_info (msg, &err, &debug);
         if (debug)
-            GST_INFO ("INFO: %s\n", debug);
+            GST_INFO ("INFO: %s", debug);
     break;
     case GST_MESSAGE_ERROR:
         gst_message_parse_error (msg, &err, &debug);
@@ -159,7 +159,7 @@ cb_message (GstBus *bus, GstMessage *msg, AppData *data) {
         g_error_free (err);
         g_free (debug);
         if (loop && g_main_loop_is_running (loop)) {
-            GST_DEBUG ("Quitting the loop \n");
+            GST_DEBUG ("Quitting the loop");
             g_main_loop_quit (loop);
         }
     break;
@@ -472,11 +472,9 @@ DD_ERROR_LOG
 create_pipeline (AppData *data) {
     data->pipeline =   gst_pipeline_new("defectdetection");
     if (file_playback) {
-        GST_DEBUG ("It's a file playback");
         data->src               =  gst_element_factory_make("filesrc",      NULL);
     } else {
-        GST_DEBUG ("It's a live playback");
-        data->src                   =  gst_element_factory_make("mediasrcbin",  NULL);
+        data->src               =  gst_element_factory_make("mediasrcbin",  NULL);
     }
     if (file_dump) {
         data->sink_raw          =  gst_element_factory_make("filesink",     NULL);
@@ -633,6 +631,10 @@ main (int argc, char **argv) {
         return -1;
     }
 
+    if (!file_playback ) {
+        GST_DEBUG ("Calling default sensor calibration script");
+        exec("echo | ar0144-sensor-calib.sh");
+    }
     ret = create_pipeline (&data);
     if (ret != DD_SUCCESS) {
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
@@ -653,7 +655,7 @@ main (int argc, char **argv) {
 
     /* we add a message handler */
     bus = gst_pipeline_get_bus (GST_PIPELINE (data.pipeline));
-    bus_watch_id = gst_bus_add_watch (bus, (GstBusFunc)(cb_message), &data);
+    bus_watch_id = gst_bus_add_watch (bus, (GstBusFunc)(message_cb), &data);
     gst_object_unref (bus);
 
     if (!file_playback) {
@@ -736,7 +738,7 @@ pad_added_cb (GstElement *src, GstPad *new_pad, AppData *data) {
     /* Attempt the link */
     ret = gst_pad_link (new_pad, sink_pad);
     if (GST_PAD_LINK_FAILED (ret)) {
-        GST_ERROR ("Linking failed.");
+        GST_ERROR ("Linking failed");
     }
 exit:
     /* Unreference the sink pad */
