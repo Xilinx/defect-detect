@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 #
 # Copyright 2021 Xilinx Inc.
 #
@@ -18,8 +19,6 @@
 # media node has to be changed as per media entry.
 #
 #
-
-#!/usr/bin/python3
 
 import argparse
 import pathlib
