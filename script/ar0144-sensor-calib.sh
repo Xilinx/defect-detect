@@ -14,6 +14,12 @@
 # limitations under the License.
 #
 #
+if [ $# -eq 0 ]
+  then
+    echo "Please give AR0144 media node as an input i.e. sudo ar0144-sensor-calib.sh /dev/media0"
+    echo "cmd 'media-ctl -d /dev/media* -p' can be used to confirm. replace '*' with media node number"
+    exit 1
+fi
 
 VCARD="/dev/dri/by-path/platform-b0010000.v_mix-card"
 if [ ! -e "$VCARD" ]
@@ -23,7 +29,7 @@ then
     exit 1
 fi
 
-MEDIA_CMD=$(media-ctl -d /dev/media0 -p)
+MEDIA_CMD=$(media-ctl -d ${1} -p)
 
 TRIM_ENTITY_12=${MEDIA_CMD#*"entity 12"}
 

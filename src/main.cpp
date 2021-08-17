@@ -637,8 +637,10 @@ main (int argc, char **argv) {
         return -1;
     }
     if (!file_playback ) {
+        std::string script_caller;
         GST_DEBUG ("Calling default sensor calibration script");
-        exec("echo | ar0144-sensor-calib.sh");
+        script_caller = "echo | ar0144-sensor-calib.sh " + dev_node;
+        exec(script_caller.c_str());
     }
     ret = create_pipeline (&data);
     if (ret != DD_SUCCESS) {
