@@ -136,15 +136,15 @@ The examples show the capability of the defect-detect for specific configuration
         --help-gst                                       Show GStreamer Options
 
    Application Options:
-          -i, --infile=file path             location of input file
-          -x, --rawout=file path             location of capture raw output file
-          -y, --preprocessout=file path      location of pre-processed output file
-          -z, --finalout=file path           location of final output file
-          -w, --width=1280                   resolution width of the input
-          -h, --height=800                   resolution height of the input
-          -r, --framerate=60                 framerate of the input source
-          -d, --demomode                     For Demo mode value must be 1, otherwise 0, default is 0
-          -c, --cfgpath=config file path     JSON config file path
+          -i, --infile=file path                                  location of input file
+          -x, --rawout=file path                                  location of capture raw output file
+          -y, --preprocessout=file path                           location of pre-processed output file
+          -z, --finalout=file path                                location of final output file
+          -w, --width=1280                                        resolution width of the input
+          -h, --height=800                                        resolution height of the input
+          -r, --framerate=60                                      framerate of the input source
+          -d, --demomode=0                                        For Demo mode value must be 1
+          -c, --cfgpath=/opt/xilinx/share/ivas/defect-detect/     JSON config file path
 ```
 
 # Files structure

@@ -90,8 +90,8 @@ static GOptionEntry entries[] =
     { "width",        'w', 0, G_OPTION_ARG_INT, &width, "resolution width of the input", "1280"},
     { "height",       'h', 0, G_OPTION_ARG_INT, &height, "resolution height of the input", "800"},
     { "framerate",    'r', 0, G_OPTION_ARG_INT, &framerate, "framerate of the input source", "60"},
-    { "demomode",     'd', 0, G_OPTION_ARG_INT, &demo_mode, "For Demo mode value must be 1, otherwise 0, default is 0", NULL},
-    { "cfgpath",      'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON config file path", "config file path"},
+    { "demomode",     'd', 0, G_OPTION_ARG_INT, &demo_mode, "For Demo mode value must be 1", "0"},
+    { "cfgpath",      'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON config file path", "/opt/xilinx/share/ivas/defect-detect/"},
     { NULL }
 };
 
@@ -204,7 +204,7 @@ error_to_string (gint error_code) {
         case DD_ERROR_STATE_CHANGE_FAIL :
             return "state change failed";
         case DD_ERROR_RESOLUTION_NOT_SUPPORTED :
-            return "Resolution WxH should be 3840x2160";
+            return "Resolution WxH should be 1280x800";
         case DD_ERROR_INPUT_OPTIONS_INVALID :
             return "Input options are incorrect";
         case DD_ERROR_OVERLAY_CREATION_FAIL :
@@ -258,21 +258,21 @@ set_pipeline_config (AppData *data) {
             caps  = gst_caps_new_simple ("video/x-raw",
                                          "framerate", GST_TYPE_FRACTION, MAX_DEMO_MODE_FRAME_RATE, MAX_FRAME_RATE_DENOM,
                                          NULL);
-            GST_DEBUG ("new Caps for src capsfilter %" GST_PTR_FORMAT, caps);
+            GST_DEBUG ("new Caps for raw capsfilter %" GST_PTR_FORMAT, caps);
             g_object_set (G_OBJECT (data->capsfilter_raw),  "caps",  caps, NULL);
             gst_caps_unref (caps);
 
             caps  = gst_caps_new_simple ("video/x-raw",
                                          "framerate", GST_TYPE_FRACTION, MAX_DEMO_MODE_FRAME_RATE, MAX_FRAME_RATE_DENOM,
                                          NULL);
-            GST_DEBUG ("new Caps for src capsfilter %" GST_PTR_FORMAT, caps);
+            GST_DEBUG ("new Caps for pre-process capsfilter %" GST_PTR_FORMAT, caps);
             g_object_set (G_OBJECT (data->capsfilter_preprocess),  "caps",  caps, NULL);
             gst_caps_unref (caps);
 
             caps  = gst_caps_new_simple ("video/x-raw",
                                          "framerate", GST_TYPE_FRACTION, MAX_DEMO_MODE_FRAME_RATE, MAX_FRAME_RATE_DENOM,
                                          NULL);
-            GST_DEBUG ("new Caps for src capsfilter %" GST_PTR_FORMAT, caps);
+            GST_DEBUG ("new Caps for final capsfilter %" GST_PTR_FORMAT, caps);
             g_object_set (G_OBJECT (data->capsfilter_display),  "caps",  caps, NULL);
             gst_caps_unref (caps);
         }
@@ -496,9 +496,9 @@ create_pipeline (AppData *data) {
     data->queue_raw2            =  gst_element_factory_make("queue",        NULL);
     data->queue_preprocess      =  gst_element_factory_make("queue",        NULL);
     data->queue_preprocess2     =  gst_element_factory_make("queue",        NULL);
-    data->perf_raw              =  gst_element_factory_make("perf",         NULL);
-    data->perf_preprocess       =  gst_element_factory_make("perf",         NULL);
-    data->perf_display          =  gst_element_factory_make("perf",         NULL);
+    data->perf_raw              =  gst_element_factory_make("perf",         "perf-raw");
+    data->perf_preprocess       =  gst_element_factory_make("perf",         "perf-preprocess");
+    data->perf_display          =  gst_element_factory_make("perf",         "perf-final");
     data->videorate_raw         =  gst_element_factory_make("videorate",    NULL);
     data->videorate_preprocess  =  gst_element_factory_make("videorate",    NULL);
     data->videorate_display     =  gst_element_factory_make("videorate",    NULL);
@@ -619,6 +619,12 @@ main (int argc, char **argv) {
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
         return ret;
     }
+
+    if (file_playback && demo_mode) {
+        g_printerr("ERROR: cmd line app doesn't support the demo mode for file playback, use Jupyter notebook to run the use case\n");
+        return -1;
+    }
+
     if (access("/dev/dri/by-path/platform-b0010000.v_mix-card", F_OK) != 0) {
         g_printerr("ERROR: Mixer device is not ready.\n%s", msg_firmware);
         return -1;
@@ -630,7 +636,6 @@ main (int argc, char **argv) {
         g_printerr ("MIPI media node not found, please check the connection of camera\n");
         return -1;
     }
-
     if (!file_playback ) {
         GST_DEBUG ("Calling default sensor calibration script");
         exec("echo | ar0144-sensor-calib.sh");
