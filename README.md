@@ -74,9 +74,20 @@ There are two ways to interact with application, via Jyputer notebook or Command
 
 ### Juypter notebook
 
-Run the python script to install jupyter notebook at specified path.
-* Example:
-	python3 defect-detect-install.py -d /home/petalinux/notebooks
+	Defect-detection Jupyter notebook application must be started with root privilege. So, to stop the running jupyter notebook, which was started by petalinux user. Run below commands as a petalinux user,
+
+    A) Get the list of running Jupyter servers, with the following command:
+		> jupyter-server list
+
+	B) Stop the default Jupyter notebook using the following command:
+		> jupyter-server stop 8888
+
+	Run the python script to install jupyter notebook at specified path as a root user.
+	* Example:
+		> python3 defect-detect-install.py -d /home/petalinux/notebooks
+
+	Launch the Jupyter notebook with root privilege using the following command:
+		> sudo jupyter lab --allow-root --notebook-dir=/home/petalinux/notebooks/defect-detect --ip=<ip address> &
 
 Use a web-browser (e.g. Chrome, Firefox) to interact with the platform.
 
@@ -88,7 +99,7 @@ Output example:
 
 > Currently running servers:
 >
-> `http://ip:port/?token=xxxxxxxxxxxxxxxxxx`  :: /opt/xilinx/share/notebooks
+> `http://ip:port/?token=xxxxxxxxxxxxxxxxxx`
 
 ### Command Line
 
@@ -159,9 +170,10 @@ The examples show the capability of the defect-detect for specific configuration
 
     * Script File Directory: /opt/xilinx/bin
 
-      | Filename                        | Description                                                  |
-      |---------------------------------|--------------------------------------------------------------|
-      | `defect-detect-install.py`      | Script to copy Jupyter notebook to user directory.           |
+      | Filename                        | Description                                                     |
+      |---------------------------------|-----------------------------------------------------------------|
+      | `defect-detect-install.py`      | Script to copy Jupyter notebook to user directory.              |
+      | `ar0144-sensor-calib.sh`        | Script to do the sensor calibration for user test environment.  |
 
     * Configuration file directory: /opt/xilinx/share/ivas/defect-detect
 
