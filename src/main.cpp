@@ -17,6 +17,7 @@
 
 #include <gst/gst.h>
 #include <gst/video/videooverlay.h>
+#include <gst/video/video.h>
 #include <string.h>
 #include <unistd.h>
 #include <memory>
@@ -54,7 +55,7 @@ typedef enum {
 } DD_ERROR_LOG;
 
 typedef struct _AppData {
-    GstElement *pipeline, *capsfilter, *src;
+    GstElement *pipeline, *capsfilter, *src, *rawvideoparse;
     GstElement *sink_raw, *sink_preprocess, *sink_display;
     GstElement *tee_raw, *tee_preprocess;
     GstElement *queue_raw, *queue_raw2, *queue_preprocess, *queue_preprocess2;
@@ -83,13 +84,13 @@ static std::string dev_node("");
 
 static GOptionEntry entries[] =
 {
-    { "infile",       'i', 0, G_OPTION_ARG_FILENAME, &in_file, "location of input file", "file path"},
-    { "rawout",       'x', 0, G_OPTION_ARG_FILENAME, &raw_out, "location of capture raw output file", "file path"},
-    { "preprocessout",'y', 0, G_OPTION_ARG_FILENAME, &preprocess_out, "location of pre-processed output file", "file path"},
-    { "finalout",     'z', 0, G_OPTION_ARG_FILENAME, &final_out, "location of final output file", "file path"},
-    { "width",        'w', 0, G_OPTION_ARG_INT, &width, "resolution width of the input", "1280"},
-    { "height",       'h', 0, G_OPTION_ARG_INT, &height, "resolution height of the input", "800"},
-    { "framerate",    'r', 0, G_OPTION_ARG_INT, &framerate, "framerate of the input source", "60"},
+    { "infile",       'i', 0, G_OPTION_ARG_FILENAME, &in_file, "Location of input file", "file path"},
+    { "rawout",       'x', 0, G_OPTION_ARG_FILENAME, &raw_out, "Location of capture raw output file", "file path"},
+    { "preprocessout",'y', 0, G_OPTION_ARG_FILENAME, &preprocess_out, "Location of pre-processed output file", "file path"},
+    { "finalout",     'z', 0, G_OPTION_ARG_FILENAME, &final_out, "Location of final output file", "file path"},
+    { "width",        'w', 0, G_OPTION_ARG_INT, &width, "Resolution width of the input", "1280"},
+    { "height",       'h', 0, G_OPTION_ARG_INT, &height, "Resolution height of the input", "800"},
+    { "framerate",    'r', 0, G_OPTION_ARG_INT, &framerate, "Framerate of the input source", "60"},
     { "demomode",     'd', 0, G_OPTION_ARG_INT, &demo_mode, "For Demo mode value must be 1", "0"},
     { "cfgpath",      'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON config file path", "/opt/xilinx/share/ivas/defect-detect/"},
     { NULL }
@@ -275,6 +276,13 @@ set_pipeline_config (AppData *data) {
             GST_DEBUG ("new Caps for final capsfilter %" GST_PTR_FORMAT, caps);
             g_object_set (G_OBJECT (data->capsfilter_display),  "caps",  caps, NULL);
             gst_caps_unref (caps);
+            if (file_playback) {
+                g_object_set (G_OBJECT (data->rawvideoparse),  "use-sink-caps", FALSE,                    NULL);
+                g_object_set (G_OBJECT (data->rawvideoparse),  "width",         width,                    NULL);
+                g_object_set (G_OBJECT (data->rawvideoparse),  "height",        height,                   NULL);
+                g_object_set (G_OBJECT (data->rawvideoparse),  "format",        GST_VIDEO_FORMAT_GRAY8,   NULL);
+                g_object_set (G_OBJECT (data->rawvideoparse),  "framerate",     MAX_DEMO_MODE_FRAME_RATE, MAX_FRAME_RATE_DENOM, NULL);
+            }
         }
         data->overlay_raw = GST_VIDEO_OVERLAY (data->sink_raw);
         if (data->overlay_raw) {
@@ -367,11 +375,19 @@ link_pipeline (AppData *data) {
         }
         GST_DEBUG ("Linked for capsfilter --> tee successfully");
     } else {
-        if (!gst_element_link_many(data->src, data->capsfilter, data->tee_raw, NULL)) {
-            GST_ERROR ("Error linking for src --> capsfilter --> tee");
-            return DD_ERROR_PIPELINE_LINKING_FAIL;
+        if (!demo_mode) {
+            if (!gst_element_link_many(data->src, data->capsfilter, data->tee_raw, NULL)) {
+                GST_ERROR ("Error linking for src --> capsfilter --> tee");
+                return DD_ERROR_PIPELINE_LINKING_FAIL;
+            }
+            GST_DEBUG ("Linked for src --> capsfilter --> tee successfully");
+        } else {
+            if (!gst_element_link_many(data->src, data->rawvideoparse, data->tee_raw, NULL)) {
+                GST_ERROR ("Error linking for src --> rawvideoparse --> tee");
+                return DD_ERROR_PIPELINE_LINKING_FAIL;
+            }
+            GST_DEBUG ("Linked for src --> rawvideoparse --> tee successfully");
         }
-        GST_DEBUG ("Linked for src --> capsfilter --> tee successfully");
     }
     if (!gst_element_link_pads(data->tee_raw, name1, data->queue_raw, "sink")) {
         GST_ERROR ("Error linking for tee --> queue_raw");
@@ -486,6 +502,7 @@ create_pipeline (AppData *data) {
         data->sink_display      =  gst_element_factory_make("kmssink",      "display-final");
     }
     data->capsfilter            =  gst_element_factory_make("capsfilter",   NULL);
+    data->rawvideoparse         =  gst_element_factory_make("rawvideoparse",NULL);
     data->preprocess            =  gst_element_factory_make("ivas_xfilter", "pre-process");
     data->otsu                  =  gst_element_factory_make("ivas_xfilter", "otsu");
     data->cca                   =  gst_element_factory_make("ivas_xfilter", "cca");
@@ -506,9 +523,10 @@ create_pipeline (AppData *data) {
     data->capsfilter_preprocess =  gst_element_factory_make("capsfilter",   NULL);
     data->capsfilter_display    =  gst_element_factory_make("capsfilter",   NULL);
 
-    if (!data->pipeline || !data->src || !data->capsfilter || !data->preprocess || !data->otsu \
-        || !data->cca || !data->text2overlay || !data->sink_display || !data->sink_raw \
-        || !data->sink_preprocess || !data->tee_raw || !data->tee_preprocess \
+    if (!data->pipeline || !data->src || !data->capsfilter || ! data->rawvideoparse \
+        || !data->preprocess || !data->otsu || !data->cca || !data->text2overlay \
+        || !data->sink_display || !data->sink_raw || !data->sink_preprocess \
+        || !data->tee_raw || !data->tee_preprocess \
         || !data->queue_raw || !data->queue_raw || !data->queue_raw2 || !data->queue_preprocess \
         || !data->queue_preprocess2 || !data->perf_raw || !data->perf_preprocess || !data->perf_display \
         || !data->videorate_raw || !data->videorate_preprocess || !data->videorate_display \
@@ -517,13 +535,14 @@ create_pipeline (AppData *data) {
            return DD_ERROR_PIPELINE_CREATE_FAIL;
     }
     GST_DEBUG ("All elements are created");
-    gst_bin_add_many(GST_BIN(data->pipeline), data->src, data->capsfilter, data->preprocess, \
-                     data->otsu, data->cca, data->text2overlay, data->sink_display, \
-                     data->sink_raw, data->queue_raw, data->queue_raw2, data->queue_preprocess, data->queue_preprocess2, \
-                     data->sink_preprocess, data->tee_raw, data->tee_preprocess, \
-                     data->perf_raw, data->perf_preprocess, data->perf_display, \
-                     data->videorate_raw, data->videorate_preprocess, data->videorate_display, \
-                     data->capsfilter_raw, data->capsfilter_preprocess, data->capsfilter_display, NULL);
+    gst_bin_add_many(GST_BIN(data->pipeline), data->src, data->rawvideoparse, data->capsfilter, \
+                     data->preprocess, data->otsu, data->cca, data->text2overlay, \
+                     data->sink_display, data->sink_raw, data->queue_raw, data->queue_raw2, \
+                     data->queue_preprocess, data->queue_preprocess2, data->sink_preprocess, \
+                     data->tee_raw, data->tee_preprocess, data->perf_raw, data->perf_preprocess, \
+                     data->perf_display, data->videorate_raw, data->videorate_preprocess, \
+                     data->videorate_display, data->capsfilter_raw, data->capsfilter_preprocess, \
+                     data->capsfilter_display, NULL);
     return DD_SUCCESS;
 }
 
@@ -618,11 +637,6 @@ main (int argc, char **argv) {
         ret = DD_ERROR_RESOLUTION_NOT_SUPPORTED;
         g_printerr ("Exiting the app with an error: %s\n", error_to_string (ret));
         return ret;
-    }
-
-    if (file_playback && demo_mode) {
-        g_printerr("ERROR: cmd line app doesn't support the demo mode for file playback, use Jupyter notebook to run the use case\n");
-        return -1;
     }
 
     if (access("/dev/dri/by-path/platform-b0010000.v_mix-card", F_OK) != 0) {
