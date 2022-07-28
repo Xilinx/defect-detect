@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Xilinx, Inc.
+ * Copyright 2021-2022 Xilinx, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include <ivas/ivaslogs.h>
-#include <ivas/ivas_kernel.h>
-#include <gst/ivas/gstinferencemeta.h>
+#include <vvas/vvaslogs.h>
+#include <vvas/vvas_kernel.h>
+#include <gst/vvas/gstinferencemeta.h>
 
 #define DEFAULT_MAX_VALUE	255
 #define NORMALIZE_THRESHOLD 13
@@ -28,12 +28,12 @@ typedef struct _kern_priv
     int log_level;
 } PreProcessingKernelPriv;
 
-int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NUM_OBJECT], IVASFrame *output[MAX_NUM_OBJECT]);
-int32_t xlnx_kernel_done(IVASKernel *handle);
-int32_t xlnx_kernel_init(IVASKernel *handle);
-uint32_t xlnx_kernel_deinit(IVASKernel *handle);
+int32_t xlnx_kernel_start(VVASKernel *handle, int start, VVASFrame *input[MAX_NUM_OBJECT], VVASFrame *output[MAX_NUM_OBJECT]);
+int32_t xlnx_kernel_done(VVASKernel *handle);
+int32_t xlnx_kernel_init(VVASKernel *handle);
+uint32_t xlnx_kernel_deinit(VVASKernel *handle);
 
-uint32_t xlnx_kernel_deinit(IVASKernel *handle)
+uint32_t xlnx_kernel_deinit(VVASKernel *handle)
 {
     PreProcessingKernelPriv *kernel_priv;
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
@@ -41,7 +41,7 @@ uint32_t xlnx_kernel_deinit(IVASKernel *handle)
     return 0;
 }
 
-int32_t xlnx_kernel_init(IVASKernel *handle)
+int32_t xlnx_kernel_init(VVASKernel *handle)
 {
     json_t *jconfig = handle->kernel_config;
     json_t *val; /* kernel config from app */
@@ -58,39 +58,32 @@ int32_t xlnx_kernel_init(IVASKernel *handle)
 	    kernel_priv->log_level = LOG_LEVEL_WARNING;
     else
 	    kernel_priv->log_level = json_integer_value (val);
-    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "IVAS PPE: debug_level %d", kernel_priv->log_level);
+    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "Debug level %d", kernel_priv->log_level);
 
     val = json_object_get (jconfig, "max_value");
     if (!val || !json_is_integer (val))
 	    kernel_priv->max_value = DEFAULT_MAX_VALUE;
     else
 	    kernel_priv->max_value = json_integer_value (val);
-    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "IVAS PPE: max_value %d", kernel_priv->max_value);
+    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "Max value %d", kernel_priv->max_value);
     handle->kernel_priv = (void *)kernel_priv;
     handle->is_multiprocess = 1;
     return 0;
 }
 
-int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NUM_OBJECT], IVASFrame *output[MAX_NUM_OBJECT])
+int32_t xlnx_kernel_start(VVASKernel *handle, int start, VVASFrame *input[MAX_NUM_OBJECT], VVASFrame *output[MAX_NUM_OBJECT])
 {
     PreProcessingKernelPriv *kernel_priv;
     int ret;
     uint32_t *thr;
-    IVASFrame *inframe = input[0];
+    VVASFrame *inframe = input[0];
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
-
-    ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x10);       /* Input buffer */
-    ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x38);   /* Rows */
-    ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t), 0x40);    /* Columns */
-    ivas_register_write(handle, &(kernel_priv->max_value), sizeof(uint32_t), 0x30);   /* Max Threshold Value */
-    ivas_register_write(handle, &(output[0]->paddr[0]), sizeof(uint64_t), 0x1C);      /* Output buffer */
-
     GstInferenceMeta *infer_meta = ((GstInferenceMeta *)gst_buffer_get_meta((GstBuffer *)
                                                                 inframe->app_priv,
                                                                 gst_inference_meta_api_get_type()));
     if (infer_meta == NULL)
     {
-        LOG_MESSAGE(LOG_LEVEL_INFO, kernel_priv->log_level, "ivas meta data is not available for crop");
+        LOG_MESSAGE(LOG_LEVEL_INFO, kernel_priv->log_level, "vvas meta data is not available for crop");
         return FALSE;
     }
     GstInferencePrediction *root = infer_meta->prediction;
@@ -103,15 +96,17 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     }
 
     kernel_priv->threshold = *thr - NORMALIZE_THRESHOLD;
-    ivas_register_write(handle, &(kernel_priv->threshold), sizeof(uint32_t), 0x28);   /* In threashold */
-    ret = ivas_kernel_start (handle);
+
+    ret = vvas_kernel_start (handle, "ppiiuu", input[0]->paddr[0], output[0]->paddr[0], \
+                             kernel_priv->threshold, kernel_priv->max_value, input[0]->props.height, \
+                             input[0]->props.width);
     if (ret < 0) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to issue execute command");
         return FALSE;
     }
 
     /* wait for kernel completion */
-    ret = ivas_kernel_done (handle, 1000);
+    ret = vvas_kernel_done (handle, 1000);
     if (ret < 0) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to receive response from kernel");
         return FALSE;
@@ -120,7 +115,7 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     return TRUE;
 }
 
-int32_t xlnx_kernel_done(IVASKernel *handle)
+int32_t xlnx_kernel_done(VVASKernel *handle)
 {
     /* dummy */
     return 0;

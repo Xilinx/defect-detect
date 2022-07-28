@@ -1,11 +1,11 @@
 {
   "xclbin-location": "/lib/firmware/xilinx/kv260-defect-detect/kv260-defect-detect.xclbin",
-  "ivas-library-repo": "/opt/xilinx/lib",
+  "vvas-library-repo": "/opt/xilinx/lib",
   "element-mode": "transform",
   "kernels": [
     {
-      "kernel-name": "preprocess_accel:preprocess_accel_1",
-      "library-name": "libivas_preprocess.so",
+      "kernel-name": "preprocess_accel:{preprocess_accel_1}",
+      "library-name": "libvvas_preprocess.so",
       "config": {
         "debug_level" : 1,
         "max_value": 255

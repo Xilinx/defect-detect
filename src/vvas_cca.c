@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Xilinx, Inc.
+ * Copyright 2021-2022 Xilinx, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include <ivas/ivaslogs.h>
-#include <ivas/ivas_kernel.h>
-#include <gst/ivas/gstinferencemeta.h>
+#include <vvas/vvaslogs.h>
+#include <vvas/vvas_kernel.h>
+#include <gst/vvas/gstinferencemeta.h>
 
 #define MAX_SUPPORTED_WIDTH         1280
 #define MAX_SUPPORTED_HEIGHT        800
@@ -24,34 +24,34 @@
 typedef struct _kern_priv
 {
     int log_level;
-    IVASFrame *tmp_mem1;
-    IVASFrame *tmp_mem2;
-    IVASFrame *mango_pix;
-    IVASFrame *defect_pix;
+    VVASFrame *tmp_mem1;
+    VVASFrame *tmp_mem2;
+    VVASFrame *mango_pix;
+    VVASFrame *defect_pix;
 } PreProcessingKernelPriv;
 
-int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NUM_OBJECT], IVASFrame *output[MAX_NUM_OBJECT]);
-int32_t xlnx_kernel_done(IVASKernel *handle);
-int32_t xlnx_kernel_init(IVASKernel *handle);
-uint32_t xlnx_kernel_deinit(IVASKernel *handle);
+int32_t xlnx_kernel_start(VVASKernel *handle, int start, VVASFrame *input[MAX_NUM_OBJECT], VVASFrame *output[MAX_NUM_OBJECT]);
+int32_t xlnx_kernel_done(VVASKernel *handle);
+int32_t xlnx_kernel_init(VVASKernel *handle);
+uint32_t xlnx_kernel_deinit(VVASKernel *handle);
 
-uint32_t xlnx_kernel_deinit(IVASKernel *handle)
+uint32_t xlnx_kernel_deinit(VVASKernel *handle)
 {
     PreProcessingKernelPriv *kernel_priv;
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
     if (kernel_priv->mango_pix)
-        ivas_free_buffer (handle, kernel_priv->mango_pix);
+        vvas_free_buffer (handle, kernel_priv->mango_pix);
     if (kernel_priv->defect_pix)
-        ivas_free_buffer (handle, kernel_priv->defect_pix);
+        vvas_free_buffer (handle, kernel_priv->defect_pix);
     if (kernel_priv->tmp_mem1)
-        ivas_free_buffer (handle, kernel_priv->tmp_mem1);
+        vvas_free_buffer (handle, kernel_priv->tmp_mem1);
     if (kernel_priv->tmp_mem2)
-        ivas_free_buffer (handle, kernel_priv->tmp_mem2);
+        vvas_free_buffer (handle, kernel_priv->tmp_mem2);
     free(kernel_priv);
     return 0;
 }
 
-int32_t xlnx_kernel_init(IVASKernel *handle)
+int32_t xlnx_kernel_init(VVASKernel *handle)
 {
     json_t *jconfig = handle->kernel_config;
     json_t *val; /* kernel config from app */
@@ -62,10 +62,10 @@ int32_t xlnx_kernel_init(IVASKernel *handle)
         printf("Error: Unable to allocate PPE kernel memory\n");
     }
     uint32_t resolution = MAX_SUPPORTED_HEIGHT * MAX_SUPPORTED_WIDTH;
-    kernel_priv->mango_pix  = ivas_alloc_buffer (handle, 1*(sizeof(uint32_t)), IVAS_INTERNAL_MEMORY, NULL);
-    kernel_priv->defect_pix = ivas_alloc_buffer (handle, 1*(sizeof(uint32_t)), IVAS_INTERNAL_MEMORY, NULL);
-    kernel_priv->tmp_mem1   = ivas_alloc_buffer (handle, resolution*(sizeof(uint8_t)), IVAS_INTERNAL_MEMORY, NULL);
-    kernel_priv->tmp_mem2   = ivas_alloc_buffer (handle, resolution*(sizeof(uint8_t)), IVAS_INTERNAL_MEMORY, NULL);
+    kernel_priv->mango_pix  = vvas_alloc_buffer (handle, 1*(sizeof(uint32_t)), VVAS_INTERNAL_MEMORY, DEFAULT_MEM_BANK, NULL);
+    kernel_priv->defect_pix = vvas_alloc_buffer (handle, 1*(sizeof(uint32_t)), VVAS_INTERNAL_MEMORY, DEFAULT_MEM_BANK, NULL);
+    kernel_priv->tmp_mem1   = vvas_alloc_buffer (handle, resolution*(sizeof(uint8_t)), VVAS_INTERNAL_MEMORY, DEFAULT_MEM_BANK, NULL);
+    kernel_priv->tmp_mem2   = vvas_alloc_buffer (handle, resolution*(sizeof(uint8_t)), VVAS_INTERNAL_MEMORY, DEFAULT_MEM_BANK, NULL);
 
     /* parse config */
     val = json_object_get (jconfig, "debug_level");
@@ -73,41 +73,34 @@ int32_t xlnx_kernel_init(IVASKernel *handle)
 	    kernel_priv->log_level = LOG_LEVEL_WARNING;
     else
 	    kernel_priv->log_level = json_integer_value (val);
-    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "IVAS PPE: debug_level %d", kernel_priv->log_level);
+    LOG_MESSAGE (LOG_LEVEL_INFO, kernel_priv->log_level, "VVAS PPE: debug_level %d", kernel_priv->log_level);
 
     handle->kernel_priv = (void *)kernel_priv;
     handle->is_multiprocess = 1;
     return 0;
 }
 
-int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NUM_OBJECT], IVASFrame *output[MAX_NUM_OBJECT])
+int32_t xlnx_kernel_start(VVASKernel *handle, int start, VVASFrame *input[MAX_NUM_OBJECT], VVASFrame *output[MAX_NUM_OBJECT])
 {
     PreProcessingKernelPriv *kernel_priv;
     int ret;
     uint32_t *mango_pixel;
     uint32_t *defect_pixel;
     GstInferenceMeta *infer_meta = NULL;
-    IVASFrame *outframe = output[0];
+    VVASFrame *outframe = output[0];
 
     kernel_priv = (PreProcessingKernelPriv *)handle->kernel_priv;
-    ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x10);                /* Input buffer */
-    ivas_register_write(handle, &(input[0]->paddr[0]), sizeof(uint64_t), 0x1C);                /* Input buffer */
-    ivas_register_write(handle, &(kernel_priv->tmp_mem1->paddr[0]), sizeof(uint64_t), 0x28);   /* temp buffer */
-    ivas_register_write(handle, &(kernel_priv->tmp_mem2->paddr[0]), sizeof(uint64_t), 0x34);   /* temp buffer */
-    ivas_register_write(handle, &(output[0]->paddr[0]), sizeof(uint64_t), 0x40);               /* Output buffer */
-    ivas_register_write(handle, &(input[0]->props.height), sizeof(uint32_t), 0x64);            /* rows */
-    ivas_register_write(handle, &(input[0]->props.width), sizeof(uint32_t), 0x6C);             /* columns */
-    ivas_register_write(handle, &(kernel_priv->mango_pix->paddr[0]), sizeof(uint64_t), 0x4C);  /* mango pixel */
-    ivas_register_write(handle, &(kernel_priv->defect_pix->paddr[0]), sizeof(uint64_t), 0x58); /* defect pixel */
-
-    ret = ivas_kernel_start (handle);
+    ret = vvas_kernel_start (handle, "pppppppuu", input[0]->paddr[0], input[0]->paddr[0], \
+                             kernel_priv->tmp_mem1->paddr[0], kernel_priv->tmp_mem2->paddr[0], \
+                             output[0]->paddr[0], kernel_priv->mango_pix->paddr[0], kernel_priv->defect_pix->paddr[0], \
+                             input[0]->props.height, input[0]->props.width); 
     if (ret < 0) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to issue execute command");
         return FALSE;
     }
 
     /* wait for kernel completion */
-    ret = ivas_kernel_done (handle, 1000);
+    ret = vvas_kernel_done (handle, 1000);
     if (ret < 0) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Failed to receive response from kernel");
         return FALSE;
@@ -119,7 +112,7 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     infer_meta = (GstInferenceMeta *) gst_buffer_add_meta ((GstBuffer *) outframe->app_priv,
                                                       gst_inference_meta_get_info (), NULL);
     if (infer_meta == NULL) {
-        LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "ivas meta data is not available");
+        LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "vvas meta data is not available");
         return FALSE;
     }
     if (NULL == infer_meta->prediction) {
@@ -142,7 +135,7 @@ int32_t xlnx_kernel_start(IVASKernel *handle, int start, IVASFrame *input[MAX_NU
     return TRUE;
 }
 
-int32_t xlnx_kernel_done(IVASKernel *handle)
+int32_t xlnx_kernel_done(VVASKernel *handle)
 {
     /* dummy */
     return 0;

@@ -3,11 +3,11 @@
 
 If you want to cross compile the source in Linux PC machine, follow these steps, otherwise skip this section.
 
-1. Refer to the `K260 SOM Starter Kit Tutorial` to build the cross-compilation SDK, and install it to the path you choose or default. Suppose it's SDKPATH.
+1. Refer to the [K260 SOM Starter Kit Tutorial](https://xilinx.github.io/kria-apps-docs/main/build/html/docs/build_petalinux.html#build-the-sdk) to build the cross-compilation SDK, and install it to the path you choose or default. Suppose it's SDKPATH.
 
 2. Run "./build.sh ${SDKPATH}" in the source code folder of current application, to build the application. <a name="build-app"></a>
 
-3. The build process in [2](#build-app) will produce a rpm package DefectDetect-2.0.1-1.aarch64.rpm under build/, upload to the board, and run "rpm -ivh --force ./DefectDetect-2.0.1-1.aarch64.rpm" to install updates.
+3. The build process in [2](#build-app) will produce a rpm package DefectDetect-2.0.1-1.aarch64.rpm under build/, upload to the board, and run "rpm -ivh --force ./DefectDetect-2.0.2-1.aarch64.rpm" to install updates.
 
 # Setting up the Board
 
@@ -155,7 +155,7 @@ The examples show the capability of the defect-detect for specific configuration
           -h, --height=800                                        Resolution height of the input
           -r, --framerate=60                                      Framerate of the input source
           -d, --demomode=0                                        For Demo mode value must be 1
-          -c, --cfgpath=/opt/xilinx/share/ivas/defect-detect/     JSON config file path
+          -c, --cfgpath=/opt/xilinx/share/vvas/defect-detect/     JSON config file path
 ```
 
 # Files structure
@@ -175,7 +175,7 @@ The examples show the capability of the defect-detect for specific configuration
       | `defect-detect-install.py`      | Script to copy Jupyter notebook to user directory.              |
       | `ar0144-sensor-calib.sh`        | Script to do the sensor calibration for user test environment.  |
 
-    * Configuration file directory: /opt/xilinx/share/ivas/defect-detect
+    * Configuration file directory: /opt/xilinx/share/vvas/defect-detect
 
         | Filename                    | Description                               |
         |-----------------------------|-------------------------------------------|
@@ -191,4 +191,4 @@ The examples show the capability of the defect-detect for specific configuration
        | defect-detect.ipynb  | Jupyter notebook file for defect detect  |
 
 
-<p align="center"><sup>Copyright&copy; 2021 Xilinx</sup></p>
+<p align="center"><sup>Copyright&copy; 2021-2022 Xilinx</sup></p>

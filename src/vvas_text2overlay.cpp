@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Xilinx, Inc.
+ * Copyright 2021-2022 Xilinx, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
-#include <ivas/ivas_kernel.h>
-#include <gst/ivas/gstinferencemeta.h>
+#include <vvas/vvas_kernel.h>
+#include <gst/vvas/gstinferencemeta.h>
 
 int log_level;
 using namespace cv;
@@ -56,11 +56,11 @@ enum
 
 struct overlayframe_info
 {
-  IVASFrame *inframe;
+  VVASFrame *inframe;
   Mat lumaImg;
 };
 
-struct ivas_xoverlaypriv
+struct vvas_xoverlaypriv
 {
   float font_size;
   float defect_threshold;
@@ -75,13 +75,13 @@ struct ivas_xoverlaypriv
 
 extern "C"
 {
-  int32_t xlnx_kernel_init (IVASKernel * handle)
+  int32_t xlnx_kernel_init (VVASKernel * handle)
   {
     LOG_MESSAGE (LOG_LEVEL_DEBUG, "enter");
 
-    ivas_xoverlaypriv *kpriv =
-        (ivas_xoverlaypriv *) malloc (sizeof (ivas_xoverlaypriv));
-    memset (kpriv, 0, sizeof (ivas_xoverlaypriv));
+    vvas_xoverlaypriv *kpriv =
+        (vvas_xoverlaypriv *) malloc (sizeof (vvas_xoverlaypriv));
+    memset (kpriv, 0, sizeof (vvas_xoverlaypriv));
 
     json_t *jconfig = handle->kernel_config;
     json_t *val;
@@ -142,10 +142,10 @@ extern "C"
     return 0;
   }
 
-  uint32_t xlnx_kernel_deinit (IVASKernel * handle)
+  uint32_t xlnx_kernel_deinit (VVASKernel * handle)
   {
     LOG_MESSAGE (LOG_LEVEL_DEBUG, "enter");
-    ivas_xoverlaypriv *kpriv = (ivas_xoverlaypriv *) handle->kernel_priv;
+    vvas_xoverlaypriv *kpriv = (vvas_xoverlaypriv *) handle->kernel_priv;
 
     if (kpriv)
         free (kpriv);
@@ -153,10 +153,10 @@ extern "C"
     return 0;
   }
 
-  uint32_t xlnx_kernel_start (IVASKernel * handle, int start,
-      IVASFrame * input[MAX_NUM_OBJECT], IVASFrame * output[MAX_NUM_OBJECT])
+  uint32_t xlnx_kernel_start (VVASKernel * handle, int start,
+      VVASFrame * input[MAX_NUM_OBJECT], VVASFrame * output[MAX_NUM_OBJECT])
   {
-    ivas_xoverlaypriv *kpriv = (ivas_xoverlaypriv *) handle->kernel_priv;
+    vvas_xoverlaypriv *kpriv = (vvas_xoverlaypriv *) handle->kernel_priv;
     struct overlayframe_info *frameinfo = &(kpriv->frameinfo);
     frameinfo->inframe = input[0];
 
@@ -168,7 +168,7 @@ extern "C"
     infer_meta = ((GstInferenceMeta *) gst_buffer_get_meta((GstBuffer *)frameinfo->inframe->app_priv,
                                                                  gst_inference_meta_api_get_type()));
     if (infer_meta == NULL) {
-        LOG_MESSAGE(LOG_LEVEL_INFO, "ivas meta data is not available for crop");
+        LOG_MESSAGE(LOG_LEVEL_INFO, "vvas meta data is not available for crop");
         return FALSE;
     }
     uint32_t *mango_pixel, *defect_pixel;
@@ -198,7 +198,7 @@ extern "C"
     putText(frameinfo->lumaImg, text_buffer, cv::Point(kpriv->x_offset, y_point), kpriv->font,
             kpriv->font_size, Scalar (255.0, 255.0, 255.0), 1, 1);
     y_point += 30;
-
+    text_buffer[0] = '\0';
     LOG_MESSAGE (LOG_LEVEL_DEBUG, "Is Defected: %s", defect_decision ? "Yes": "No");
     sprintf(text_buffer, "Is Defected: %s", defect_decision ? "Yes": "No");
     LOG_MESSAGE (LOG_LEVEL_DEBUG, "text buffer : %s", text_buffer);
@@ -221,7 +221,7 @@ extern "C"
   }
 
 
-  int32_t xlnx_kernel_done (IVASKernel * handle)
+  int32_t xlnx_kernel_done (VVASKernel * handle)
   {
       return 0;
   }

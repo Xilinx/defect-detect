@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2010 - 2021 Xilinx, Inc. All rights reserved.
+* Copyright (C) 2010 - 2022 Xilinx, Inc. All rights reserved.
 * SPDX-License-Identifier: Apache-2.0
 ******************************************************************************/
 
@@ -7,11 +7,11 @@
 
     If you want to cross compile the source in Linux PC machine, follow these steps, otherwise skip this section.
 
-    1. Refer to the `K260 SOM Starter Kit Tutorial` to build the cross-compilation SDK, and install it to the path you choose or default. Suppose it's SDKPATH.
+    1. Refer to the [K260 SOM Starter Kit Tutorial](https://xilinx.github.io/kria-apps-docs/main/build/html/docs/build_petalinux.html#build-the-sdk) to build the cross-compilation SDK, and install it to the path you choose or default. Suppose it's SDKPATH.
 
     2. Run "./build.sh ${SDKPATH}" in the source code folder of current application, to build the application.
 
-    3. The build process in [1.2] will produce a rpm package DefectDetect-2.0.1-1.aarch64.rpm under build/, upload to the board, and run "rpm -ivh --force ./DefectDetect-2.0.1-1.aarch64.rpm" to install updates.
+    3. The build process in [1.2] will produce a rpm package DefectDetect-2.0.1-1.aarch64.rpm under build/, upload to the board, and run "rpm -ivh --force ./DefectDetect-2.0.2-1.aarch64.rpm" to install updates.
 
 
 2. Setting up the Board
@@ -156,7 +156,7 @@
           -h, --height=800                                        Resolution height of the input
           -r, --framerate=60                                      Framerate of the input source
           -d, --demomode=0                                        For Demo mode value must be 1
-          -c, --cfgpath=/opt/xilinx/share/ivas/defect-detect/     JSON config file path
+          -c, --cfgpath=/opt/xilinx/share/vvas/defect-detect/     JSON config file path
 
 4. Files structure
 
@@ -175,7 +175,7 @@
       | `defect-detect-install.py`      | Script to copy Jupyter notebook to user directory.             |
       | `ar0144-sensor-calib.sh`        | Script to do the sensor calibration for user test environment. |
 
-    * Configuration file directory: /opt/xilinx/share/ivas/defect-detect
+    * Configuration file directory: /opt/xilinx/share/vvas/defect-detect
 
         | Filename                    | Description                               |
         |-----------------------------|-------------------------------------------|

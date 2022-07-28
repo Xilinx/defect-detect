@@ -1,5 +1,5 @@
 #
-# Copyright 2021 Xilinx Inc.
+# Copyright 2021-2022 Xilinx Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,29 +31,29 @@ find_package(OpenCV REQUIRED COMPONENTS opencv_core opencv_video opencv_videoio 
 
 SET(INSTALL_PATH "opt/xilinx")
 
-add_library(ivas_cca SHARED src/ivas_cca.c)
-target_include_directories(ivas_cca PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(ivas_cca
-  jansson ivasutil gstivasinfermeta-1.0)
-install(TARGETS ivas_cca DESTINATION ${INSTALL_PATH}/lib)
+add_library(vvas_cca SHARED src/vvas_cca.c)
+target_include_directories(vvas_cca PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_link_libraries(vvas_cca
+  jansson vvasutil-2.0 gstvvasinfermeta-2.0)
+install(TARGETS vvas_cca DESTINATION ${INSTALL_PATH}/lib)
 
-add_library(ivas_otsu SHARED src/ivas_otsu.c)
-target_include_directories(ivas_otsu PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(ivas_otsu
-  jansson ivasutil gstivasinfermeta-1.0)
-install(TARGETS ivas_otsu DESTINATION ${INSTALL_PATH}/lib)
+add_library(vvas_otsu SHARED src/vvas_otsu.c)
+target_include_directories(vvas_otsu PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_link_libraries(vvas_otsu
+  jansson vvasutil-2.0 gstvvasinfermeta-2.0)
+install(TARGETS vvas_otsu DESTINATION ${INSTALL_PATH}/lib)
 
-add_library(ivas_text2overlay SHARED src/ivas_text2overlay.cpp)
-target_include_directories(ivas_text2overlay PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(ivas_text2overlay
-  gstreamer-1.0 glib-2.0 gstivasinfermeta-1.0 jansson ivasutil ${OpenCV_LIBS} glog)
-install(TARGETS ivas_text2overlay DESTINATION ${INSTALL_PATH}/lib)
+add_library(vvas_text2overlay SHARED src/vvas_text2overlay.cpp)
+target_include_directories(vvas_text2overlay PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_link_libraries(vvas_text2overlay
+  gstreamer-1.0 glib-2.0 gstvvasinfermeta-2.0 jansson vvasutil-2.0 ${OpenCV_LIBS} glog)
+install(TARGETS vvas_text2overlay DESTINATION ${INSTALL_PATH}/lib)
 
-add_library(ivas_preprocess SHARED src/ivas_preprocess.c)
-target_include_directories(ivas_preprocess PRIVATE ${GSTREAMER_INCLUDE_DIRS})
-target_link_libraries(ivas_preprocess
-  jansson ivasutil gstivasinfermeta-1.0)
-install(TARGETS ivas_preprocess DESTINATION ${INSTALL_PATH}/lib)
+add_library(vvas_preprocess SHARED src/vvas_preprocess.c)
+target_include_directories(vvas_preprocess PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_link_libraries(vvas_preprocess
+  jansson vvasutil-2.0 gstvvasinfermeta-2.0)
+install(TARGETS vvas_preprocess DESTINATION ${INSTALL_PATH}/lib)
 
 add_executable(defect-detect src/main.cpp)
 target_include_directories(defect-detect PRIVATE ${GSTREAMER_INCLUDE_DIRS})
@@ -77,13 +77,13 @@ install(FILES
     config/text2overlay.json
     config/cca-accelarator.json
     config/preprocess-accelarator.json
-    DESTINATION ${INSTALL_PATH}/share/ivas/defect-detect)
+    DESTINATION ${INSTALL_PATH}/share/vvas/defect-detect)
 
 install(DIRECTORY
     notebook/
     DESTINATION ${INSTALL_PATH}/share/notebooks/defect-detect)
 
-set(VERSION "2.0.1")
+set(VERSION "2.0.2")
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")
 set(CPACK_PACKAGE_NAME "DefectDetect")

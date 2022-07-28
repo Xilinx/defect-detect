@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Xilinx Inc.
+ * Copyright 2021-2022 Xilinx Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ gboolean file_playback = FALSE;
 gboolean file_dump = FALSE;
 gboolean demo_mode = FALSE;
 static gchar* in_file = NULL;
-static gchar* config_path  = (gchar *)"/opt/xilinx/share/ivas/defect-detect/";
+static gchar* config_path  = (gchar *)"/opt/xilinx/share/vvas/defect-detect/";
 static gchar *msg_firmware = (gchar *)"Load the HW accelerator firmware first. Use command: xmutil loadapp kv260-defect-detect\n";
 static gchar* final_out = NULL;
 static gchar* preprocess_out = NULL;
@@ -92,7 +92,7 @@ static GOptionEntry entries[] =
     { "height",       'h', 0, G_OPTION_ARG_INT, &height, "Resolution height of the input", "800"},
     { "framerate",    'r', 0, G_OPTION_ARG_INT, &framerate, "Framerate of the input source", "60"},
     { "demomode",     'd', 0, G_OPTION_ARG_INT, &demo_mode, "For Demo mode value must be 1", "0"},
-    { "cfgpath",      'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON config file path", "/opt/xilinx/share/ivas/defect-detect/"},
+    { "cfgpath",      'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON config file path", "/opt/xilinx/share/vvas/defect-detect/"},
     { NULL }
 };
 
@@ -503,10 +503,10 @@ create_pipeline (AppData *data) {
     }
     data->capsfilter            =  gst_element_factory_make("capsfilter",   NULL);
     data->rawvideoparse         =  gst_element_factory_make("rawvideoparse",NULL);
-    data->preprocess            =  gst_element_factory_make("ivas_xfilter", "pre-process");
-    data->otsu                  =  gst_element_factory_make("ivas_xfilter", "otsu");
-    data->cca                   =  gst_element_factory_make("ivas_xfilter", "cca");
-    data->text2overlay          =  gst_element_factory_make("ivas_xfilter", "text2overlay");
+    data->preprocess            =  gst_element_factory_make("vvas_xfilter", "pre-process");
+    data->otsu                  =  gst_element_factory_make("vvas_xfilter", "otsu");
+    data->cca                   =  gst_element_factory_make("vvas_xfilter", "cca");
+    data->text2overlay          =  gst_element_factory_make("vvas_xfilter", "text2overlay");
     data->tee_raw               =  gst_element_factory_make("tee",          NULL);
     data->tee_preprocess        =  gst_element_factory_make("tee",          NULL);
     data->queue_raw             =  gst_element_factory_make("queue",        NULL);
@@ -643,7 +643,7 @@ main (int argc, char **argv) {
         g_printerr("ERROR: Mixer device is not ready.\n%s", msg_firmware);
         return -1;
     } else {
-        exec("echo | modetest -D B0010000.v_mix -s 52@40:3840x2160@NV16");
+        exec("echo | modetest -M xlnx -D B0010000.v_mix -s 52@40:3840x2160@NV16");
     }
 
     if (!file_playback && (check_mipi_src() != 0)) {
