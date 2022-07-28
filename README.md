@@ -7,7 +7,7 @@ If you want to cross compile the source in Linux PC machine, follow these steps,
 
 2. Run "./build.sh ${SDKPATH}" in the source code folder of current application, to build the application. <a name="build-app"></a>
 
-3. The build process in [2](#build-app) will produce a rpm package DefectDetect-2.0.1-1.aarch64.rpm under build/, upload to the board, and run "rpm -ivh --force ./DefectDetect-2.0.2-1.aarch64.rpm" to install updates.
+3. The build process in [2](#build-app) will produce a rpm package DefectDetect-2.0.2-1.aarch64.rpm under build/, upload to the board, and run "rpm -ivh --force ./DefectDetect-2.0.2-1.aarch64.rpm" to install updates.
 
 # Setting up the Board
 
