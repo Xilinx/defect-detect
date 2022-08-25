@@ -27,12 +27,12 @@ import sys
 import shutil
 
 def main(appname):
-    note_dir="/opt/xilinx/share/notebooks/"+appname
+    note_dir="/opt/xilinx/kv260-defect-detect/share/notebooks/"
     parser = argparse.ArgumentParser(prog=appname+'-install',
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
                                  description='Script to copy {} Jupyter notebook to user directory\n' '\tUse python3 to run this script\n'
-								 '\tExample: python3 defect-detect-install.py -d /home/petalinux/notebooks\n'.format(appname))
-    parser.add_argument('-d', '--dir', type=pathlib.Path, help='Install the Jupyter notebook to the specified directory.', default=os.path.join("/home/petalinux/notebooks", "./{}".format(appname)) )
+								 '\tExample: python3 defect-detect-install.py -d ~/notebooks\n'.format(appname))
+    parser.add_argument('-d', '--dir', type=pathlib.Path, help='Install the Jupyter notebook to the specified directory.', default=os.path.join("{}/notebooks".format(os.path.expanduser("/tmp")), "./{}".format(appname)) )
     parser.add_argument('-f', '--force', action='store_true', help='Force to install the Jupyter notebook even if the destination directory exists.')
     args = parser.parse_args()
     destdir = os.path.abspath(args.dir)

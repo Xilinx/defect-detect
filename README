@@ -148,34 +148,34 @@
             --help-gst                                       Show GStreamer Options
 
         Application Options:
-          -i, --infile=file path                                  Location of input file
-          -x, --rawout=file path                                  Location of capture raw output file
-          -y, --preprocessout=file path                           Location of pre-processed output file
-          -z, --finalout=file path                                Location of final output file
-          -w, --width=1280                                        Resolution width of the input
-          -h, --height=800                                        Resolution height of the input
-          -r, --framerate=60                                      Framerate of the input source
-          -d, --demomode=0                                        For Demo mode value must be 1
-          -c, --cfgpath=/opt/xilinx/share/vvas/defect-detect/     JSON config file path
+          -i, --infile=file path                                        Location of input file
+          -x, --rawout=file path                                        Location of capture raw output file
+          -y, --preprocessout=file path                                 Location of pre-processed output file
+          -z, --finalout=file path                                      Location of final output file
+          -w, --width=1280                                              Resolution width of the input
+          -h, --height=800                                              Resolution height of the input
+          -r, --framerate=60                                            Framerate of the input source
+          -d, --demomode=0                                              For Demo mode value must be 1
+          -c, --cfgpath=/opt/xilinx/kv260-defect-detect/share/vvas/     JSON config file path
 
 4. Files structure
 
     The application is installed as:
 
-    * Binary File Directory: /opt/xilinx/bin
+    * Binary File Directory: /opt/xilinx/kv260-defect-detect/bin
 
         | Filename        | Description |
         |-----------------|-------------|
         | defect-detect   | main app    |
 
-    * Script File Directory: /opt/xilinx/bin
+    * Script File Directory: /opt/xilinx/kv260-defect-detect/bin
 
       | Filename                        | Description                                                    |
       |---------------------------------|----------------------------------------------------------------|
       | `defect-detect-install.py`      | Script to copy Jupyter notebook to user directory.             |
       | `ar0144-sensor-calib.sh`        | Script to do the sensor calibration for user test environment. |
 
-    * Configuration file directory: /opt/xilinx/share/vvas/defect-detect
+    * Configuration file directory: /opt/xilinx/kv260-defect-detect/share/vvas/
 
         | Filename                    | Description                               |
         |-----------------------------|-------------------------------------------|
@@ -184,7 +184,7 @@
         | preprocess-accelarator.json | Config of pre-process accelarator.        |
         | text2overlay.json           | Config of text2overlay.                   |
 
-     * Jupyter Notebook Directory:  /opt/xilinx/share/notebooks/defect-detect/
+     * Jupyter Notebook Directory:  /opt/xilinx/kv260-defect-detect/share/notebooks/
 
        | Filename             | Description                              |
        |----------------------|------------------------------------------|

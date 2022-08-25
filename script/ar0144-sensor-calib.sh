@@ -31,9 +31,9 @@ fi
 
 MEDIA_CMD=$(media-ctl -d ${1} -p)
 
-TRIM_ENTITY_12=${MEDIA_CMD#*"entity 12"}
+TRIM_ENTITY=${MEDIA_CMD#*"ap1302"}
 
-TRIM_DEVICE_NODE=${TRIM_ENTITY_12#*"device node name"}
+TRIM_DEVICE_NODE=${TRIM_ENTITY#*"device node name"}
 
 SUBDEV=($TRIM_DEVICE_NODE)
 

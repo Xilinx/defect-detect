@@ -23,7 +23,7 @@ int log_level;
 using namespace cv;
 using namespace std;
 
-#define DEFAULT_DEFECT_THRESHOLD  0.16
+#define DEFAULT_DEFECT_THRESHOLD  0.14
 
 enum
 {

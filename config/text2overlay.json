@@ -1,6 +1,6 @@
 {
   "xclbin-location": "/lib/firmware/xilinx/kv260-defect-detect/kv260-defect-detect.xclbin",
-  "vvas-library-repo": "/opt/xilinx/lib",
+  "vvas-library-repo": "/opt/xilinx/kv260-defect-detect/lib",
   "element-mode":"inplace",
   "kernels" :[
     {
@@ -11,7 +11,7 @@
         "font" : 3,
         "x_offset" : 0,
         "y_offset" : 50,
-        "defect_threshold" : 0.16,
+        "defect_threshold" : 0.14,
         "is_acc_result" : 0
       }
     }

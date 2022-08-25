@@ -29,7 +29,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 find_package(GStreamer REQUIRED)
 find_package(OpenCV REQUIRED COMPONENTS opencv_core opencv_video opencv_videoio opencv_imgproc opencv_imgcodecs opencv_highgui)
 
-SET(INSTALL_PATH "opt/xilinx")
+SET(INSTALL_PATH "opt/xilinx/kv260-defect-detect")
 
 add_library(vvas_cca SHARED src/vvas_cca.c)
 target_include_directories(vvas_cca PRIVATE ${GSTREAMER_INCLUDE_DIRS})
@@ -77,11 +77,11 @@ install(FILES
     config/text2overlay.json
     config/cca-accelarator.json
     config/preprocess-accelarator.json
-    DESTINATION ${INSTALL_PATH}/share/vvas/defect-detect)
+    DESTINATION ${INSTALL_PATH}/share/vvas/)
 
 install(DIRECTORY
     notebook/
-    DESTINATION ${INSTALL_PATH}/share/notebooks/defect-detect)
+    DESTINATION ${INSTALL_PATH}/share/notebooks)
 
 set(VERSION "2.0.2")
 set(CPACK_PACKAGE_VERSION ${VERSION})

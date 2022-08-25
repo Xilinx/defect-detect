@@ -72,7 +72,7 @@ gboolean file_playback = FALSE;
 gboolean file_dump = FALSE;
 gboolean demo_mode = FALSE;
 static gchar* in_file = NULL;
-static gchar* config_path  = (gchar *)"/opt/xilinx/share/vvas/defect-detect/";
+static gchar* config_path  = (gchar *)"/opt/xilinx/kv260-defect-detect/share/vvas/";
 static gchar *msg_firmware = (gchar *)"Load the HW accelerator firmware first. Use command: xmutil loadapp kv260-defect-detect\n";
 static gchar* final_out = NULL;
 static gchar* preprocess_out = NULL;
@@ -92,7 +92,7 @@ static GOptionEntry entries[] =
     { "height",       'h', 0, G_OPTION_ARG_INT, &height, "Resolution height of the input", "800"},
     { "framerate",    'r', 0, G_OPTION_ARG_INT, &framerate, "Framerate of the input source", "60"},
     { "demomode",     'd', 0, G_OPTION_ARG_INT, &demo_mode, "For Demo mode value must be 1", "0"},
-    { "cfgpath",      'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON config file path", "/opt/xilinx/share/vvas/defect-detect/"},
+    { "cfgpath",      'c', 0, G_OPTION_ARG_STRING, &config_path, "JSON config file path", "/opt/xilinx/kv260-defect-detect/share/vvas/"},
     { NULL }
 };
 
